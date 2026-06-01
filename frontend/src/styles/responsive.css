@@ -1,0 +1,126 @@
+/* Responsive design for ForgeAI frontend tools */
+/* Global mobile-friendly styles */
+
+/* Ensure containers fill width and have appropriate padding */
+.tool-page {
+  max-width: 100%;
+  width: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Form layout: single column on mobile, two columns on larger screens */
+.tool-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Input fields and selects */
+.tool-form input,
+.tool-form select,
+.tool-form textarea {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  font-size: 1rem;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Buttons */
+.tool-form button {
+  min-height: 44px;
+  padding: 0.8rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, hsl(210, 70%, 55%), hsl(240, 70%, 50%));
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.tool-form button:hover {
+  background: linear-gradient(135deg, hsl(210, 80%, 60%), hsl(240, 80%, 55%));
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.tool-form button:focus {
+  outline: 3px solid hsl(210, 80%, 70%);
+  outline-offset: 2px;
+}
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, hsl(210, 70%, 55%), hsl(240, 70%, 50%));
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.tool-form button:hover {
+  background: linear-gradient(135deg, hsl(210, 80%, 60%), hsl(240, 80%, 55%));
+}
+
+/* Result container */
+.result-box {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  overflow-x: auto;
+  word-wrap: break-word;
+}
+
+/* Image preview */
+.result-box img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+/* Mobile specific tweaks */
+@media (max-width: 600px) {
+  .tool-page {
+    padding: 0.75rem;
+  }
+
+  .tool-form {
+    gap: 0.5rem;
+  }
+
+  .tool-form button {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 1rem;
+  }
+}
+
+/* Tablet and larger screens – optional two‑column layout for form fields */
+@media (min-width: 601px) {
+  .tool-form.two-column {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Ensure any modal or card components fill mobile width */
+.modal,
+.card {
+  width: 100%;
+  max-width: 100%;
+}
