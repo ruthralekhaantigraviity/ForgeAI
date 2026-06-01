@@ -128,3 +128,9 @@
   width: 100%;
   max-width: 100%;
 }
+/* Hide symbol visibility */
+.hide-symbol { display: none; }
+@media (max-width: 600px) {
+  .hide-symbol { display: inline-flex; }
+  .hide-on-mobile { display: none; }
+}

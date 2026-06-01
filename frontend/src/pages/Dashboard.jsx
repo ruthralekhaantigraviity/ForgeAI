@@ -323,6 +323,9 @@ const Dashboard = () => {
 
   return (
     <div className="h-full flex flex-col relative text-gray-900 dark:text-gray-100">
+      <style>{`
+        @media (min-width: 640px) { .hide-symbol { display: none; } }
+      `}</style>
       {/* Header */}
       <div className="flex items-start justify-between mb-6 relative z-10 shrink-0">
         <div>
@@ -341,7 +344,6 @@ const Dashboard = () => {
               {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
               <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
             </button>
-            {/* Icon indicating hidden on mobile */}
             <EyeOff className="w-4 h-4 text-gray-400 hide-symbol" title="Fullscreen hidden on mobile" />
           <button
             onClick={() => setShowOptions(true)}
