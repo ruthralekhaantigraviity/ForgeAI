@@ -18,6 +18,7 @@ import {
 import { useState, useEffect, useRef, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 
 // Simple inline markdown renderer
 const RenderMessage = ({ text }) => {
@@ -291,7 +292,7 @@ const Dashboard = () => {
         : {};
 
       const { data } = await axios.post(
-        'http://localhost:5000/api/ai/chat',
+        `${API_BASE_URL}/api/ai/chat`,
         { message: text, history: messages.slice(-6) },
         { headers }
       );
@@ -300,7 +301,7 @@ const Dashboard = () => {
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
       console.error('API error:', err);
-      setError('Could not reach the server. Make sure the backend is running on port 5000.');
+      setError('Could not reach the server. Make sure the backend is running.');
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsProcessing(false);

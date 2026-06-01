@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { Sparkles, Copy, CheckCircle2, Hash, ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
+import API_BASE_URL from '../../config/api';
 
 const SocialMedia = () => {
   const { user } = useContext(AuthContext);
@@ -30,7 +31,7 @@ const SocialMedia = () => {
         ? { Authorization: `Bearer ${token}` }
         : {};
 
-      const { data } = await axios.post('http://localhost:5000/api/ai/social', {
+      const { data } = await axios.post(`${API_BASE_URL}/api/ai/social`, {
         platform, topic, tone,
       }, { headers });
 

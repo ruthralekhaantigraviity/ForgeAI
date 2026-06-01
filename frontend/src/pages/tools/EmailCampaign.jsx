@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Copy, CheckCircle2, Mail } from 'lucide-react';
 import axios from 'axios';
+import API_BASE_URL from '../../config/api';
 
 const EmailCampaign = () => {
   const [emailType, setEmailType] = useState('Welcome Email');
@@ -15,7 +16,7 @@ const EmailCampaign = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await axios.post('http://localhost:5000/api/ai/email', {
+      const { data } = await axios.post(`${API_BASE_URL}/api/ai/email`, {
         emailType, brand, audience, keyMessage,
       });
       setResult(data.content);

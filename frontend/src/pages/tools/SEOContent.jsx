@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Copy, CheckCircle2, FileText } from 'lucide-react';
 import axios from 'axios';
+import API_BASE_URL from '../../config/api';
 
 const SEOContent = () => {
   const [contentType, setContentType] = useState('Blog Post');
@@ -15,7 +16,7 @@ const SEOContent = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await axios.post('http://localhost:5000/api/ai/seo', {
+      const { data } = await axios.post(`${API_BASE_URL}/api/ai/seo`, {
         contentType, keyword, industry, wordCount,
       });
       setResult(data.content);

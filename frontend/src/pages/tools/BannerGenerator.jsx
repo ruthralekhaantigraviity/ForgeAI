@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, Download, Image as ImageIcon } from 'lucide-react';
+import API_BASE_URL from '../../config/api';
 
 const BannerGenerator = () => {
   const [prompt, setPrompt] = useState('');
@@ -19,8 +20,8 @@ const BannerGenerator = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Defaulting to relative or localhost depending on proxy, but we'll use localhost:5000 for safety based on backend setup
-      const response = await fetch('http://localhost:5000/api/ai/banner', {
+      // Use Render backend URL
+      const response = await fetch(`${API_BASE_URL}/api/ai/banner`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ prompt, style, size })

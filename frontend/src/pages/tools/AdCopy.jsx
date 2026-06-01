@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Copy, CheckCircle2, Megaphone } from 'lucide-react';
 import axios from 'axios';
+import API_BASE_URL from '../../config/api';
 
 const AdCopy = () => {
   const [adType, setAdType] = useState('Facebook');
@@ -15,7 +16,7 @@ const AdCopy = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await axios.post('http://localhost:5000/api/ai/ad-copy', {
+      const { data } = await axios.post(`${API_BASE_URL}/api/ai/ad-copy`, {
         adType, product, audience, goal,
       });
       setResult(data.content);
