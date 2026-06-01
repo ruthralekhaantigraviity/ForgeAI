@@ -13,7 +13,8 @@ import {
   AlertCircle,
   RefreshCw,
   Camera,
-  ImagePlus
+  ImagePlus,
+  EyeOff
 } from 'lucide-react';
 import { useState, useEffect, useRef, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
@@ -333,13 +334,15 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={toggleFullscreen}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm hide-on-mobile"
-          >
-            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
-          </button>
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm hide-on-mobile"
+            >
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+            </button>
+            {/* Icon indicating hidden on mobile */}
+            <EyeOff className="w-4 h-4 text-gray-400 hide-symbol" title="Fullscreen hidden on mobile" />
           <button
             onClick={() => setShowOptions(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm"
