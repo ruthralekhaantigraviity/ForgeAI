@@ -128,9 +128,9 @@
   width: 100%;
   max-width: 100%;
 }
-/* Hide symbol visibility */
-.hide-symbol { display: none; }
+/* Hide symbol visibility – always show for now */
+.hide-symbol { display: inline-flex; }
+/* Mobile specific hide for fullscreen button */
 @media (max-width: 600px) {
-  .hide-symbol { display: inline-flex; }
   .hide-on-mobile { display: none; }
 }
