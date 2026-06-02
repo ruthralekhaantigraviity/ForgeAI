@@ -97,6 +97,8 @@ const Dashboard = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
 
+  const dashboardRef = useRef(null);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -107,7 +109,9 @@ const Dashboard = () => {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
+      // Enter fullscreen on the dashboard container if available, fallback to document element
+      const el = dashboardRef.current || document.documentElement;
+      el.requestFullscreen().catch(err => {
         console.error('Fullscreen error:', err);
       });
     } else {
@@ -322,10 +326,8 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col relative text-gray-900 dark:text-gray-100">
-      <style>{`
-        @media (min-width: 640px) { .hide-symbol { display: none; } }
-      `}</style>
+    <div ref={dashboardRef} className="h-full flex flex-col relative text-gray-900 dark:text-gray-100">
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6 relative z-10 shrink-0">
         <div>
@@ -337,14 +339,13 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex gap-2">
-            <button
-              onClick={toggleFullscreen}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm hide-on-mobile"
-            >
-              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
-            </button>
-            <EyeOff className="w-4 h-4 text-gray-400 hide-symbol" title="Fullscreen hidden on mobile" />
+          <button
+            onClick={toggleFullscreen}
+  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm"
+>
+  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+  <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+</button>
           <button
             onClick={() => setShowOptions(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm"
