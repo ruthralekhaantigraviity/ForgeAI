@@ -1,8 +1,10 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useRef } from 'react';
 import { Sparkles, Copy, CheckCircle2, Hash, ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import API_BASE_URL from '../../config/api';
+
+// Always point to local backend
+const API_BASE_URL = 'http://localhost:5000';
 
 const SocialMedia = () => {
   const { user } = useContext(AuthContext);
@@ -16,6 +18,35 @@ const SocialMedia = () => {
   const [copied, setCopied] = useState(false);
   const [copiedTag, setCopiedTag] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const imgRef = useRef(null);
+
+  // Capture the displayed image from the <img> element via canvas and open/download it
+  const handleImageAction = () => {
+    if (!imgRef.current) return;
+    const img = imgRef.current;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        if (!blob) { window.open(imageUrl, '_blank'); return; }
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `ai-generated-${Date.now()}.jpeg`;
+        link.href = blobUrl;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      }, 'image/jpeg', 0.95);
+    } catch {
+      // Cross-origin fallback: just download via link
+      const link = document.createElement('a');
+      link.download = `ai-generated-${Date.now()}.jpeg`;
+      link.href = imageUrl;
+      link.click();
+    }
+  };
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -41,8 +72,10 @@ const SocialMedia = () => {
 
     } catch (err) {
       console.error('API Error:', err);
-      setResult(`✨ Discover the beauty of ${topic}!\n\nEvery moment tells a story — and this one is worth sharing.\n\nSave this for later 📌 and tag someone who needs to see this! 👇`);
-      setHashtags([`#${topic.replace(/\s+/g, '')}`, '#Photography', '#NaturalLight', '#ContentCreator', '#Aesthetic', '#VisualStorytelling', '#DailyInspiration', '#ForgeAI', '#Marketing', '#TrendingNow', '#Inspiration', '#Beautiful', '#InstaGood', '#PhotoOfTheDay', '#ReelIt']);
+      const errMsg = err?.response?.data?.message || err?.message || 'Unknown error';
+      setResult(`❌ Generation failed: ${errMsg}\n\nMake sure the backend is running on port 5000.`);
+      setHashtags([]);
+      setImageUrl(null);
     } finally {
       setLoading(false);
     }
@@ -157,20 +190,21 @@ const SocialMedia = () => {
                     <div className="absolute inset-0 bg-gray-200 dark:bg-gray-800 animate-pulse" />
                   )}
                   <img
+                    ref={imgRef}
                     src={imageUrl}
                     alt="AI Generated"
                     className="w-full h-auto object-cover"
+                    crossOrigin="anonymous"
                     onLoad={() => setImageLoaded(true)}
+                    onError={() => setImageLoaded(true)}
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <a
-                      href={imageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-md text-sm font-medium border border-white/20 transition-colors"
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <button
+                      onClick={handleImageAction}
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-md text-sm font-medium border border-white/20 transition-colors cursor-pointer flex items-center gap-2"
                     >
-                      View Full Size ↗
-                    </a>
+                      ⬇ Download Image
+                    </button>
                   </div>
                 </div>
               ) : (

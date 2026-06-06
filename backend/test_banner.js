@@ -34,12 +34,13 @@ async function test() {
   try {
     console.log("Calling Hugging Face FLUX.1-schnell...");
     const hfResponse = await axios.post(
-      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
+      'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
       { inputs: enhancedPrompt },
       {
         headers: {
           'Authorization': `Bearer ${hfKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'image/jpeg'
         },
         responseType: 'arraybuffer'
       }

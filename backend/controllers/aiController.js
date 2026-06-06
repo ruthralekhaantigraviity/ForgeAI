@@ -4,39 +4,51 @@ const axios = require('axios');
 const FormData = require('form-data');
 
 // ─── Image generation via Stability AI ───────────────────────────────────────────
+
+
+
 const generateImage = async (prompt) => {
   require('dotenv').config({ override: true });
-  const stabilityKey = process.env.STABILITY_API_KEY;
 
-  if (!stabilityKey || stabilityKey === 'your_stability_api_key_here') {
-    throw new Error('STABILITY_API_KEY is missing or invalid.');
+  // --- Tier 1: Hugging Face (FLUX.1-schnell) ---
+  const hfKey = process.env.HUGGINGFACE_API_KEY;
+  if (hfKey && hfKey !== 'your_huggingface_api_key_here') {
+    try {
+      console.log('Attempting image generation via Hugging Face...');
+      const response = await axios.post(
+        'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
+        { inputs: prompt },
+        {
+          headers: {
+            'Authorization': `Bearer ${hfKey}`,
+            'Content-Type': 'application/json',
+            'Accept': 'image/jpeg',
+          },
+          responseType: 'arraybuffer',
+          timeout: 30000,
+        }
+      );
+
+      const base64Image = Buffer.from(response.data).toString('base64');
+      console.log('✅ Image generated via Hugging Face');
+      return `data:image/jpeg;base64,${base64Image}`;
+    } catch (err) {
+      console.warn('⚠️ Hugging Face image generation failed:', err.response ? Buffer.from(err.response.data).toString('utf-8') : err.message);
+    }
   }
 
-  const formData = new FormData();
-  formData.append('prompt', prompt);
-  formData.append('output_format', 'jpeg');
-
-  const response = await axios.post(
-    'https://api.stability.ai/v2beta/stable-image/generate/core',
-    formData,
-    {
-      headers: {
-        ...formData.getHeaders(),
-        Authorization: `Bearer ${stabilityKey}`,
-        Accept: 'image/*',
-      },
-      responseType: 'arraybuffer',
-      timeout: 60000,
-    }
-  );
-
-  const base64Image = Buffer.from(response.data).toString('base64');
-  console.log('✅ Image generated via Stability AI');
-  return `data:image/jpeg;base64,${base64Image}`;
+  // --- Tier 2: Pollinations AI (Direct Client-Side Generation URL) ---
+  console.log('Serving Pollinations AI client-side generation URL to bypass server rate limit...');
+  const encodedPrompt = encodeURIComponent(prompt);
+  const seed = Math.floor(Math.random() * 1000000);
+  const pollinationsUrl = `https://image.pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}`;
+  
+  console.log(`✅ Served generation URL: ${pollinationsUrl}`);
+  return pollinationsUrl;
 };
 
 // Helper: generate AI text using Gemini API
-const generateText = async (systemPrompt, userPrompt) => {
+const generateText = async (systemPrompt, userPrompt, retries = 3) => {
   require('dotenv').config({ override: true });
   
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -44,21 +56,33 @@ const generateText = async (systemPrompt, userPrompt) => {
     return null;
   }
 
-  try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        contents: [{
-          parts: [
-            { text: systemPrompt + '\n\n' + userPrompt }
-          ]
-        }]
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          contents: [{
+            parts: [
+              { text: systemPrompt + '\n\n' + userPrompt }
+            ]
+          }]
+        }
+      );
+      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        console.warn("Gemini response missing text. Response:", JSON.stringify(response.data, null, 2));
       }
-    );
-    return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-  } catch (error) {
-    console.error('Gemini API Error:', error.response?.data || error.message);
-    return null;
+      return text || null;
+    } catch (error) {
+      const status = error.response?.status;
+      if (status === 503 && attempt < retries) {
+        console.warn(`Gemini API 503 error. Retrying attempt ${attempt + 1}/${retries} in 1.5 seconds...`);
+        await new Promise(res => setTimeout(res, 1500));
+        continue;
+      }
+      console.error('Gemini API Error:', error.response?.data || error.message);
+      return null;
+    }
   }
 };
 
@@ -109,7 +133,21 @@ Return ONLY the final prompt text, nothing else.`;
     // ─── Step 4: Generate hashtags ─────────────────────────────────────────────
     let hashtags = [];
     const hashtagSystemPrompt = `Generate 15 trending and relevant Instagram hashtags for the given topic. Mix popular and niche hashtags. No spammy tags. Return only hashtags separated by spaces, no explanations.`;
-    const hashtagContent = await generateText(hashtagSystemPrompt, `Generate hashtags for: ${topic}`);
+    let hashtagContent = await generateText(hashtagSystemPrompt, `Generate hashtags for: ${topic}`);
+
+          // If Gemini fails, create dynamic hashtags based on topic
+      const baseTag = topic.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
+      const genericTags = [
+        '#Inspiration', '#Trending', '#Explore', '#Creative', '#Now', '#Vibes', '#CoolStuff'
+      ];
+      // Combine base topic tag with random generic tags
+      hashtags = [
+        `#${baseTag}`,
+        `#${baseTag}Life`,
+        `#${baseTag}Style`,
+        ...genericTags.sort(() => Math.random() - 0.5).slice(0, 4)
+      ];
+
 
     if (hashtagContent) {
       hashtags = hashtagContent.match(/#\w+/g) || [];
@@ -131,9 +169,10 @@ Return ONLY the final prompt text, nothing else.`;
     const userPrompt = `Create a ${platform || 'Instagram'} post caption about: ${topic}`;
 
     let content = await generateText(systemPrompt, userPrompt);
-
     if (!content) {
-      content = `✨ Discover the beauty of ${topic}!\n\nEvery moment tells a story — and this one is worth sharing. Whether you're just starting or leveling up, ${topic} is here to inspire.\n\nSave this for later 📌 and tag someone who needs to see this! 👇`;
+      // If the primary prompt fails, use a much stronger fallback prompt to force variety
+      const fallbackPrompt = `Write a completely unique, creative, and highly engaging social media caption about: ${topic}. Do not use generic templates like "Discover the beauty of..." or "Every moment tells a story". Be highly specific and original.`;
+      content = await generateText(fallbackPrompt, topic) || `Here is a special post about ${topic}! It's truly inspiring and worth checking out. What do you think? 👇`;
     }
 
     // Save to history
