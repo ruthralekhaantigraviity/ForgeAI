@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
 import { Sparkles, Download, Image as ImageIcon, RefreshCw, Wand2 } from 'lucide-react';
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000';
+import API_BASE_URL from '../../config/api';
 
 const STYLES = ['Modern', 'Minimal', 'Bold', 'Gradient', 'Corporate', 'Playful'];
 

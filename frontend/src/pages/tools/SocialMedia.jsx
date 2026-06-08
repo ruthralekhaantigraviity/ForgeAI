@@ -2,9 +2,7 @@ import { useState, useContext, useRef } from 'react';
 import { Sparkles, Copy, CheckCircle2, Hash, ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-
-// Always point to local backend
-const API_BASE_URL = 'http://localhost:5000';
+import API_BASE_URL from '../../config/api';
 
 const SocialMedia = () => {
   const { user } = useContext(AuthContext);

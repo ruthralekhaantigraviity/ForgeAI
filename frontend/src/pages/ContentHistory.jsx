@@ -2,8 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { History, Trash2, Copy, CheckCircle2, Search, MessageSquare, Megaphone, Mail, FileText, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-
-const API_BASE_URL = 'http://localhost:5000';
+import API_BASE_URL from '../config/api';
 
 const iconMap = {
   'Social Media': MessageSquare,
