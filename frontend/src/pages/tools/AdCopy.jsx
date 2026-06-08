@@ -107,7 +107,7 @@ Join thousands of businesses already using our platform. Start your free trial t
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Campaign Goal</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {['Conversions', 'Brand Awareness', 'Traffic'].map((g) => (
                   <button
                     key={g}

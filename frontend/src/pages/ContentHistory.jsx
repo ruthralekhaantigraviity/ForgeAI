@@ -218,7 +218,7 @@ const ContentHistory = () => {
                     <h3 className="text-gray-900 dark:text-white font-medium truncate mb-1">{item.title}</h3>
                     <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">{preview}...</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => handleCopy(item._id, item.content)}
                       className="p-2 rounded-lg hover:bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"

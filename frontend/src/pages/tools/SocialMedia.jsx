@@ -133,7 +133,7 @@ const SocialMedia = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tone of Voice</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {['Professional', 'Friendly', 'Funny', 'Luxury'].map((t) => (
                   <button
                     key={t}
@@ -172,9 +172,19 @@ const SocialMedia = () => {
         <div className="space-y-4">
           {/* Generated Image */}
           <div className="bg-white dark:bg-brand-dark border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-brand-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Generated Image</span>
+            <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-brand-500" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Generated Image</span>
+              </div>
+              {imageUrl && (
+                <button
+                  onClick={handleImageAction}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                >
+                  ⬇ Download
+                </button>
+              )}
             </div>
             <div className="relative min-h-[220px] flex items-center justify-center bg-gray-50 dark:bg-brand-darker">
               {loading ? (

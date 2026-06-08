@@ -115,7 +115,7 @@ Mastering ${kw} is not an overnight process, but with the right strategy and con
           <form onSubmit={handleGenerate} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content Type</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {['Blog Post', 'Landing Page', 'Product Description', 'Article'].map((t) => (
                   <button
                     key={t}

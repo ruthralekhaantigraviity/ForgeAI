@@ -42,14 +42,22 @@ const DashboardLayout = () => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
+  const [isSidebarHidden, setIsSidebarHidden] = useState(() => window.innerWidth < 768);
   const [activeModal, setActiveModal] = useState(null);
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-[#0a0f1c] text-gray-900 dark:text-gray-100 overflow-hidden font-sans transition-colors duration-300">
       
+      {/* Mobile overlay backdrop */}
+      {!isSidebarHidden && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/40 z-10 backdrop-blur-sm"
+          onClick={() => setIsSidebarHidden(true)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`bg-brand-500 dark:bg-[#38bdf8] flex flex-col items-center py-6 shadow-2xl relative z-20 h-full rounded-r-3xl transition-all duration-300 ${
+      <aside className={`bg-brand-500 dark:bg-[#38bdf8] flex flex-col items-center py-6 shadow-2xl z-20 h-full rounded-r-3xl transition-all duration-300 md:relative absolute md:left-auto left-0 md:top-auto top-0 md:bottom-auto bottom-0 md:h-full h-screen ${
         isSidebarHidden ? 'w-0 overflow-hidden opacity-0 pointer-events-none' : 'w-20'
       }`}>
         <Link to="/dashboard" className="mb-8" title="AI Chatbot">
@@ -81,7 +89,7 @@ const DashboardLayout = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Top Navbar */}
-        <header className="h-20 flex items-center justify-between px-8 bg-white/50 dark:bg-gradient-to-r dark:from-brand-600/10 dark:to-transparent relative z-10 rounded-t-3xl mt-4 mr-4 backdrop-blur-md border-b border-gray-200 dark:border-transparent gap-4">
+        <header className="h-20 flex items-center justify-between px-4 md:px-8 bg-white/50 dark:bg-gradient-to-r dark:from-brand-600/10 dark:to-transparent relative z-10 rounded-t-3xl md:mt-4 md:mr-4 backdrop-blur-md border-b border-gray-200 dark:border-transparent gap-4">
           <button
             onClick={() => setIsSidebarHidden(!isSidebarHidden)}
             className="p-2.5 rounded-full bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-700 transition-colors shadow-sm flex items-center justify-center shrink-0"
@@ -90,7 +98,7 @@ const DashboardLayout = () => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex-1 max-w-2xl relative">
+          <div className="hidden sm:block flex-1 max-w-2xl relative">
             <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
@@ -152,7 +160,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto px-8 pb-8 relative z-0 mt-4">
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 relative z-0 mt-4">
           <Outlet />
         </div>
       </main>
