@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
 import { Sparkles, Download, Image as ImageIcon, RefreshCw, Wand2 } from 'lucide-react';
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000';
+import API_BASE_URL from '../../config/api';
 
 const STYLES = ['Modern', 'Minimal', 'Bold', 'Gradient', 'Corporate', 'Playful'];
 
@@ -178,7 +177,7 @@ const BannerGenerator = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Design Style
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {STYLES.map((s) => (
                   <button
                     key={s}
@@ -245,12 +244,12 @@ const BannerGenerator = () => {
         {/* Result */}
         <div className="bg-white dark:bg-brand-dark border border-gray-200 dark:border-gray-800 p-6 rounded-2xl flex flex-col gap-4">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
               <ImageIcon className="w-5 h-5 text-pink-500" />
               Generated Banner
               {bannerUrl && (
-                <span className="text-xs font-normal text-gray-500 ml-1">— {selectedSize.label} ({size})</span>
+                <span className="text-xs font-normal text-gray-500">— {selectedSize.label} ({size})</span>
               )}
             </h3>
             {bannerUrl && (

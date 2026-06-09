@@ -2,9 +2,7 @@ import { useState, useContext, useRef } from 'react';
 import { Sparkles, Copy, CheckCircle2, Hash, ImageIcon, Tag } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-
-// Always point to local backend
-const API_BASE_URL = 'http://localhost:5000';
+import API_BASE_URL from '../../config/api';
 
 const PLATFORM_ICONS = {
   Instagram: '📸',
@@ -180,7 +178,7 @@ const SocialMedia = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tone of Voice</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {['Professional', 'Friendly', 'Funny', 'Luxury'].map((t) => (
                   <button
                     key={t}
