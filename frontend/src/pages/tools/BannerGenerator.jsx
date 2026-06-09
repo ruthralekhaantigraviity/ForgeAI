@@ -23,7 +23,50 @@ const BannerGenerator = () => {
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [error, setError]         = useState('');
+  const [isEditingImage, setIsEditingImage] = useState(false);
+  const [editInstructions, setEditInstructions] = useState('');
+  const [editingLoading, setEditingLoading] = useState(false);
   const imgRef = useRef(null);
+
+  const handleEditImage = async () => {
+    if (!editInstructions.trim()) return;
+    setEditingLoading(true);
+    setError('');
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const token = userInfo?.token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && !token.startsWith('guest')) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const { data } = await axios.post(
+        `${API_BASE_URL}/api/ai/edit-image`,
+        {
+          prompt: enhancedPrompt || prompt,
+          instructions: editInstructions,
+          generatorType: 'banner',
+          size
+        },
+        { headers, timeout: 60000 }
+      );
+
+      if (data.imageUrl) {
+        setBannerUrl(data.imageUrl);
+        if (data.enhancedPrompt) setEnhancedPrompt(data.enhancedPrompt);
+        setImageLoaded(false);
+        setIsEditingImage(false);
+        setEditInstructions('');
+      } else {
+        throw new Error('No image returned from server');
+      }
+    } catch (err) {
+      console.error('Error editing banner image:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to edit banner image. Please try again.');
+    } finally {
+      setEditingLoading(false);
+    }
+  };
 
   const selectedSize = SIZES.find(s => s.value === size) || SIZES[0];
 
@@ -106,7 +149,7 @@ const BannerGenerator = () => {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Banner Generator</h1>
         </div>
         <p className="text-gray-600 dark:text-gray-400">
-          Create stunning marketing banners with AI-powered image generation using Hugging Face FLUX.
+          Create stunning marketing banners with AI-powered image generation using Pollinations AI.
         </p>
       </header>
 
@@ -245,7 +288,7 @@ const BannerGenerator = () => {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium">Generating your banner...</p>
-                  <p className="text-xs text-gray-500 mt-1">Hugging Face FLUX is creating your image</p>
+                  <p className="text-xs text-gray-500 mt-1">Pollinations AI is creating your image</p>
                 </div>
                 <div className="flex gap-1.5">
                   {[0, 1, 2].map(i => (
@@ -263,7 +306,6 @@ const BannerGenerator = () => {
                   src={bannerUrl}
                   alt="AI Generated Banner"
                   className="w-full h-auto max-h-[480px] object-contain rounded-lg shadow-2xl"
-                  crossOrigin="anonymous"
                   onLoad={() => setImageLoaded(true)}
                   onError={() => setImageLoaded(true)}
                 />
@@ -271,14 +313,21 @@ const BannerGenerator = () => {
                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
                   <button
                     onClick={handleDownload}
-                    className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
                   >
                     <Download className="w-4 h-4" />
                     Download
                   </button>
                   <button
+                    type="button"
+                    onClick={() => setIsEditingImage(true)}
+                    className="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
                     onClick={handleGenerate}
-                    className="px-4 py-2 bg-pink-500/90 hover:bg-pink-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium border border-white/10 transition-colors flex items-center gap-1.5"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Regenerate
@@ -296,6 +345,50 @@ const BannerGenerator = () => {
               </div>
             )}
           </div>
+          {bannerUrl && isEditingImage && (
+            <div className="p-4 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Describe the changes you want to make to the banner image:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editInstructions}
+                  onChange={(e) => setEditInstructions(e.target.value)}
+                  placeholder="e.g. change text color to gold, place products on right side"
+                  className="flex-1 px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-gray-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-pink-500 text-gray-900 dark:text-white"
+                  disabled={editingLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEditImage();
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleEditImage}
+                  disabled={editingLoading || !editInstructions.trim()}
+                  className="px-3 py-2 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+                >
+                  {editingLoading ? (
+                    <>
+                      <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : 'Apply'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingImage(false);
+                    setEditInstructions('');
+                  }}
+                  className="px-3 py-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-xl hover:bg-gray-300 transition-colors"
+                  disabled={editingLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Enhanced Prompt (AI used this) */}
           {enhancedPrompt && !loading && (

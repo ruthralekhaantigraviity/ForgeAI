@@ -7,44 +7,44 @@ const FormData = require('form-data');
 
 
 
-const generateImage = async (prompt) => {
+const generateImage = async (prompt, width = 1024, height = 1024) => {
   require('dotenv').config({ override: true });
 
-  // --- Tier 1: Hugging Face (FLUX.1-schnell) ---
   const hfKey = process.env.HUGGINGFACE_API_KEY;
-  if (hfKey && hfKey !== 'your_huggingface_api_key_here') {
-    try {
-      console.log('Attempting image generation via Hugging Face...');
-      const response = await axios.post(
-        'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
-        { inputs: prompt },
-        {
-          headers: {
-            'Authorization': `Bearer ${hfKey}`,
-            'Content-Type': 'application/json',
-            'Accept': 'image/jpeg',
-          },
-          responseType: 'arraybuffer',
-          timeout: 30000,
-        }
-      );
-
-      const base64Image = Buffer.from(response.data).toString('base64');
-      console.log('✅ Image generated via Hugging Face');
-      return `data:image/jpeg;base64,${base64Image}`;
-    } catch (err) {
-      console.warn('⚠️ Hugging Face image generation failed:', err.response ? Buffer.from(err.response.data).toString('utf-8') : err.message);
-    }
+  if (!hfKey || hfKey === 'your_huggingface_api_key_here') {
+    throw new Error('Missing or invalid HUGGINGFACE_API_KEY in your backend/.env file.');
   }
 
-  // --- Tier 2: Pollinations AI (Direct Client-Side Generation URL) ---
-  console.log('Serving Pollinations AI client-side generation URL to bypass server rate limit...');
-  const encodedPrompt = encodeURIComponent(prompt);
-  const seed = Math.floor(Math.random() * 1000000);
-  const pollinationsUrl = `https://image.pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}`;
-  
-  console.log(`✅ Served generation URL: ${pollinationsUrl}`);
-  return pollinationsUrl;
+  try {
+    console.log(`Attempting image generation via Hugging Face (${width}x${height})...`);
+    const response = await axios.post(
+      'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
+      { 
+        inputs: prompt,
+        parameters: {
+          width: width,
+          height: height
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${hfKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'image/jpeg',
+        },
+        responseType: 'arraybuffer',
+        timeout: 30000,
+      }
+    );
+
+    const base64Image = Buffer.from(response.data).toString('base64');
+    console.log('✅ Image generated via Hugging Face');
+    return `data:image/jpeg;base64,${base64Image}`;
+  } catch (err) {
+    const errMsg = err.response ? Buffer.from(err.response.data).toString('utf-8') : err.message;
+    console.error('⚠️ Hugging Face image generation failed:', errMsg);
+    throw new Error(`Hugging Face image generation failed: ${errMsg}`);
+  }
 };
 
 // Helper: generate AI text using Gemini API
@@ -85,6 +85,113 @@ const generateText = async (systemPrompt, userPrompt, retries = 3) => {
     }
   }
 };
+
+// Local fallbacks when Gemini is rate-limited / quota exceeded or key is invalid
+const getLocalFallbackData = (platform, topic, tone) => {
+  const cleanTopic = topic.trim();
+  const lowerTopic = cleanTopic.toLowerCase();
+
+  // Build a primary hashtag from the topic words
+  const baseTag = cleanTopic
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join('');
+  const primaryTag = baseTag ? `#${baseTag}` : '#BrandForge';
+
+  // Helper: pick emoji + tone prefix
+  const toneEmoji = { Professional: '🎯', Friendly: '😊', Funny: '😂', Luxury: '✨' }[tone] || '✨';
+
+  // Platform-specific CTA
+  const cta = {
+    Instagram: 'Drop your thoughts in the comments! 👇 Follow for more!',
+    LinkedIn: 'Share your experience in the comments. Let\'s connect! 🤝',
+    'Twitter / X': 'Retweet if you agree! What\'s your take? 👇',
+    Facebook: 'Tag someone who needs to see this! Share your thoughts below! 👇',
+  }[platform] || 'Share your thoughts below! 👇';
+
+  // Platform-specific hashtag suffixes
+  const platformTags = {
+    Instagram: ['#instagood', '#instadaily', '#explore', '#reels', '#photooftheday'],
+    LinkedIn: ['#linkedin', '#professional', '#networking', '#career', '#growth'],
+    'Twitter / X': ['#trending', '#viral', '#x', '#thread', '#twitterX'],
+    Facebook: ['#facebook', '#facebookpage', '#community', '#share', '#viral'],
+  }[platform] || ['#instagood', '#trending', '#viral', '#explore', '#photooftheday'];
+
+  // ──────────────────────────────────────────────────────
+  // Category Detection & Specific Content
+  // ──────────────────────────────────────────────────────
+
+  // 1. Food & Dining
+  if (/pizza|food|dinner|cooking|recipe|burger|cafe|restaurant|eat|lunch|breakfast|coffee|dessert|cake|sushi|pasta|street food|snack/i.test(lowerTopic)) {
+    const content = `${toneEmoji} There's nothing quite like ${cleanTopic} to bring people together and create unforgettable moments. 🍽️ From the first bite to the last, every detail is crafted to perfection. Life is too short for bad food — so why not treat yourself today?\n\n${cta}`;
+    const hashtags = [primaryTag, '#foodie', '#foodporn', '#instafood', '#delicious', '#yummy', '#foodphotography', '#foodstagram', '#chefmode', '#recipeoftheday', '#eatlocal', '#tasty', '#foodlover', ...platformTags.slice(0, 2)];
+    return { content, hashtags };
+  }
+
+  // 2. Nature, Travel & Outdoors
+  if (/sunset|sunrise|beach|nature|mountain|lake|sky|forest|sun|sea|ocean|travel|adventure|explore|trip|vacation|journey|waterfall|river|garden|park/i.test(lowerTopic)) {
+    const content = `${toneEmoji} ${cleanTopic} is one of those experiences that stays with you forever. 🌅 Nature has a way of putting everything into perspective — reminding us to slow down, breathe deeply, and soak in every beautiful moment around us.\n\n${cta}`;
+    const hashtags = [primaryTag, '#naturephotography', '#wanderlust', '#landscape', '#beautifuldestinations', '#outdoors', '#travel', '#earthpix', '#scenicview', '#peaceful', '#exploremore', '#adventure', ...platformTags.slice(0, 3)];
+    return { content, hashtags };
+  }
+
+  // 3. Fitness & Health
+  if (/gym|fitness|workout|health|healthy|running|exercise|training|active|yoga|meditation|sport|diet|nutrition|muscle|strength/i.test(lowerTopic)) {
+    const content = `${toneEmoji} Committed to ${cleanTopic}? You're already ahead of most! 💪 Every rep, every step, every healthy choice is an investment in the best version of yourself. Progress isn't always linear — but it's always worth it.\n\n${cta}`;
+    const hashtags = [primaryTag, '#fitnessmotivation', '#gymlife', '#healthylifestyle', '#fitspiration', '#workout', '#noexcuses', '#strongertogether', '#progressnotperfection', '#wellness', '#fitfam', '#training', ...platformTags.slice(0, 3)];
+    return { content, hashtags };
+  }
+
+  // 4. Tech, Business & Entrepreneurship
+  if (/business|marketing|work|tech|technology|startup|entrepreneur|code|office|productivity|software|digital|ai|app|website|saas|innovation/i.test(lowerTopic)) {
+    const content = `${toneEmoji} The future belongs to those who are building it today — and ${cleanTopic} is exactly where it starts. 🚀 In a world that moves fast, staying curious and adaptable is the ultimate competitive advantage. Are you keeping up?\n\n${cta}`;
+    const hashtags = [primaryTag, '#startup', '#entrepreneurship', '#technology', '#marketing', '#productivity', '#digitaltransformation', '#businessgrowth', '#innovation', '#leadership', '#successmindset', '#techtrends', ...platformTags.slice(0, 3)];
+    return { content, hashtags };
+  }
+
+  // 5. Fashion & Lifestyle
+  if (/fashion|style|outfit|clothes|luxury|brand|beauty|makeup|skincare|lifestyle|aesthetic|design|art|photography|creative/i.test(lowerTopic)) {
+    const content = `${toneEmoji} When it comes to ${cleanTopic}, every detail tells a story. 🎨 Style is more than what you wear — it's how you express who you are without saying a word. Own your aesthetic, own your story.\n\n${cta}`;
+    const hashtags = [primaryTag, '#fashion', '#style', '#aesthetic', '#lifestyle', '#ootd', '#beauty', '#creative', '#artistic', '#design', '#luxury', '#brand', ...platformTags.slice(0, 3)];
+    return { content, hashtags };
+  }
+
+  // 6. Education & Learning
+  if (/learn|education|study|school|college|university|course|skill|knowledge|book|read|teach|tutorial|guide|tips/i.test(lowerTopic)) {
+    const content = `${toneEmoji} Investing in ${cleanTopic} is one of the smartest things you can do for your future. 📚 Knowledge compounds — every lesson learned today multiplies into opportunities tomorrow. Never stop growing!\n\n${cta}`;
+    const hashtags = [primaryTag, '#education', '#learning', '#knowledge', '#studygram', '#growthmindset', '#selfimprovement', '#skills', '#mentalhealth', '#motivated', '#lifelong learner', '#personaldevelopment', ...platformTags.slice(0, 3)];
+    return { content, hashtags };
+  }
+
+  // 7. Music, Entertainment & Events
+  if (/music|song|concert|event|party|festival|show|movie|film|game|sports|match|dance|performance|live/i.test(lowerTopic)) {
+    const content = `${toneEmoji} ${cleanTopic} is the kind of experience that gives you goosebumps and memories that last a lifetime! 🎵 Whether you're there for the vibe, the energy, or the pure joy — this is what living is all about!\n\n${cta}`;
+    const hashtags = [primaryTag, '#music', '#entertainment', '#event', '#liveshow', '#concert', '#vibes', '#experience', '#memories', '#fun', '#celebrate', '#community', ...platformTags.slice(0, 3)];
+    return { content, hashtags };
+  }
+
+  // 8. General (Dynamic) Fallback — uses topic directly
+  const content = `${toneEmoji} Today's focus: **${cleanTopic}**. 🎯 Every great achievement starts with a single step and an unwavering commitment to what matters most. Whether you're just beginning or already deep in the journey — keep pushing, keep creating, keep growing.\n\n${cta}`;
+  const hashtags = [
+    primaryTag,
+    `${primaryTag}Vibes`,
+    `${primaryTag}Journey`,
+    '#instagood',
+    '#photooftheday',
+    '#aesthetic',
+    '#contentcreator',
+    '#creative',
+    '#trending',
+    '#dailyinspiration',
+    '#mindset',
+    '#motivated',
+    ...platformTags.slice(0, 3)
+  ];
+  return { content, hashtags };
+};
+
 
 // @desc    Generate social media post
 // @route   POST /api/ai/social
@@ -130,49 +237,50 @@ Return ONLY the final prompt text, nothing else.`;
       console.error('Hugging Face image error:', err.message);
     }
 
-    // ─── Step 4: Generate hashtags ─────────────────────────────────────────────
+    // ─── Step 4 & 5: Generate content & hashtags ───
+    const localFallback = getLocalFallbackData(platform, topic, tone);
+    let content = null;
     let hashtags = [];
-    const hashtagSystemPrompt = `Generate 15 trending and relevant Instagram hashtags for the given topic. Mix popular and niche hashtags. No spammy tags. Return only hashtags separated by spaces, no explanations.`;
-    let hashtagContent = await generateText(hashtagSystemPrompt, `Generate hashtags for: ${topic}`);
 
-          // If Gemini fails, create dynamic hashtags based on topic
-      const baseTag = topic.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
-      const genericTags = [
-        '#Inspiration', '#Trending', '#Explore', '#Creative', '#Now', '#Vibes', '#CoolStuff'
-      ];
-      // Combine base topic tag with random generic tags
-      hashtags = [
-        `#${baseTag}`,
-        `#${baseTag}Life`,
-        `#${baseTag}Style`,
-        ...genericTags.sort(() => Math.random() - 0.5).slice(0, 4)
-      ];
+    const systemPrompt = `You are an expert ${platform} social media content creator. Your task is to write a caption SPECIFICALLY and ONLY about the topic given by the user — do NOT write a generic post.
 
+Rules:
+- The caption must be about "${topic}" — mention it naturally and specifically.
+- Tone: ${tone || 'Professional'}. Match the energy of ${platform}.
+- Include 2-3 relevant emojis.
+- End with a clear call-to-action suited to ${platform}.
+- Do NOT include any hashtags in the caption (they are added separately).
+- Keep it between 3-6 sentences. Be specific, compelling, and platform-native.
+- Never use generic phrases like "unleashing your potential" or "diving deep" that have nothing to do with the topic.`;
+    const userPrompt = `Write a ${platform} caption about: ${topic}`;
 
-    if (hashtagContent) {
-      hashtags = hashtagContent.match(/#\w+/g) || [];
+    try {
+      content = await generateText(systemPrompt, userPrompt);
+    } catch (err) {
+      console.error('Failed to generate caption text via Gemini:', err.message);
     }
 
-    if (hashtags.length === 0) {
-      const tag = topic.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
-      hashtags = [
-        `#${tag}`, `#${tag}Photography`, `#${tag}Vibes`,
-        '#Photography', '#NaturalLight', '#CinematicShots',
-        '#4KPhotography', '#ContentCreator', '#VisualStorytelling',
-        '#ProfessionalPhoto', '#Aesthetic', '#DailyInspiration',
-        '#BrandForge', '#Marketing', '#TrendingNow',
-      ];
+    const hashtagSystemPrompt = `You are a ${platform} hashtag expert. Generate exactly 15 hashtags that are SPECIFICALLY relevant to the topic "${topic}" on ${platform}.
+
+Rules:
+- Mix 5 very popular hashtags, 5 niche topic-specific hashtags, and 5 ${platform}-native hashtags.
+- All hashtags must be directly related to "${topic}" — not generic marketing tags.
+- Return ONLY the hashtags separated by spaces, no explanations, no numbering.`;
+    try {
+      const hashtagContent = await generateText(hashtagSystemPrompt, `Topic: ${topic} | Platform: ${platform}`);
+      if (hashtagContent) {
+        hashtags = hashtagContent.match(/#\w+/g) || [];
+      }
+    } catch (err) {
+      console.error('Failed to generate hashtags via Gemini:', err.message);
     }
 
-    // ─── Step 5: Generate post caption ────────────────────────────────────────
-    const systemPrompt = `You are an expert social media marketer. Generate an engaging ${platform || 'Instagram'} post caption in a ${tone || 'Professional'} tone. Include emojis and a call-to-action. Do NOT include hashtags (they are added separately). Keep it concise and compelling.`;
-    const userPrompt = `Create a ${platform || 'Instagram'} post caption about: ${topic}`;
-
-    let content = await generateText(systemPrompt, userPrompt);
+    // Apply high-quality local fallbacks if API failed
     if (!content) {
-      // If the primary prompt fails, use a much stronger fallback prompt to force variety
-      const fallbackPrompt = `Write a completely unique, creative, and highly engaging social media caption about: ${topic}. Do not use generic templates like "Discover the beauty of..." or "Every moment tells a story". Be highly specific and original.`;
-      content = await generateText(fallbackPrompt, topic) || `Here is a special post about ${topic}! It's truly inspiring and worth checking out. What do you think? 👇`;
+      content = localFallback.content;
+    }
+    if (hashtags.length === 0) {
+      hashtags = localFallback.hashtags;
     }
 
     // Save to history
@@ -212,17 +320,40 @@ const generateAdCopy = async (req, res) => {
       content = `📢 ${adType || 'Facebook'} Ad — ${goal || 'Conversions'}\n\n🎯 Headline:\n"Unlock the Future of ${product} — Limited Time Offer!"\n\n📝 Primary Text:\nTired of solutions that don't deliver? We built something different.\n\n${audience ? `Perfect for ${audience}.` : ''}\n\n✅ AI-powered optimization\n✅ Results in 48 hours\n✅ Loved by 10,000+ businesses\n\n👉 CTA: "Get Started Free →"\n\n📌 Description:\nJoin thousands using our platform. Free trial — no credit card required.`;
     }
 
+    // Enhance image prompt for Ad
+    const imageEnhanceSystemPrompt = `You are an expert ad designer. Convert the product description into a highly compelling, professional ad image description.
+It should be suitable for AI image generation. Make it visually appealing, commercial, and focused on marketing.
+Do not add any text on the image. Return ONLY the description, nothing else.`;
+
+    let imagePrompt = product;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      const enhanced = await generateText(imageEnhanceSystemPrompt, `Product: "${product}". Target audience: "${audience || 'General'}"`);
+      if (enhanced) {
+        imagePrompt = enhanced;
+      }
+    }
+
+    let imageUrl = null;
+    try {
+      // Ads default to 1080x1080 (square feed ad)
+      imageUrl = await generateImage(imagePrompt, 1080, 1080);
+      console.log('✅ Ad image generated successfully');
+    } catch (err) {
+      console.error('Error generating ad image:', err);
+    }
+
     if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
       await GeneratedContent.create({
         user: req.user._id,
         type: 'Ad Copy',
         title: `${adType} ad for ${product.substring(0, 50)}`,
         content,
-        metadata: { adType, audience, goal },
+        metadata: { adType, audience, goal, imageUrl },
       });
     }
 
-    res.json({ content });
+    res.json({ content, imageUrl, imagePrompt });
   } catch (error) {
     console.error('Ad copy generation error:', error);
     res.status(500).json({ message: 'Failed to generate content' });
@@ -472,7 +603,17 @@ Do not add quotation marks.`;
     }
 
     try {
-      const imageUrl = await generateImage(enhancedPrompt);
+      // Parse width and height from size parameter (e.g. "1200x628")
+      let width = 1200;
+      let height = 628;
+      if (size && size.includes('x')) {
+        const parts = size.split('x');
+        width = parseInt(parts[0], 10) || 1200;
+        height = parseInt(parts[1], 10) || 628;
+      }
+
+      // Generate image (using generateImage which uses Hugging Face primary, Pollinations AI fallback)
+      const imageUrl = await generateImage(enhancedPrompt, width, height);
 
       // Save to history
       if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
@@ -486,14 +627,62 @@ Do not add quotation marks.`;
       }
 
       res.json({ imageUrl, enhancedPrompt });
-    } catch (hfErr) {
-      console.error('Pollinations Image Error:', hfErr.message);
+    } catch (imgErr) {
+      console.error('Image Generation Error:', imgErr.message);
       res.status(500).json({ message: 'Failed to generate banner image.' });
     }
 
   } catch (error) {
     console.error('Banner generation error:', error);
     res.status(500).json({ message: 'Internal server error during banner generation.' });
+  }
+};
+
+// @desc    Edit/Regenerate an image with instructions
+// @route   POST /api/ai/edit-image
+const editImage = async (req, res) => {
+  try {
+    const { prompt, instructions, generatorType, size } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ message: 'Original prompt or topic is required' });
+    }
+
+    const systemPrompt = `You are an expert AI image prompt engineer. 
+Your task is to take an original image description and modify it according to the user's editing instructions.
+Create a single cohesive new image prompt that incorporates the requested changes.
+Keep the overall style, context, and elements of the original prompt unless the user wants to change them.
+Return ONLY the final modified image prompt. Do not add any introduction, explanations, or quotes.`;
+
+    let finalPrompt = `${prompt}. Changes to make: ${instructions}`;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      const enhanced = await generateText(systemPrompt, `Original Prompt: "${prompt}"\nInstructions: "${instructions}"`);
+      if (enhanced) {
+        finalPrompt = enhanced;
+      }
+    }
+
+    let imageUrl = '';
+    if (generatorType === 'banner') {
+      // Use Pollinations AI for banner
+      let width = 1200;
+      let height = 628;
+      if (size && size.includes('x')) {
+        const parts = size.split('x');
+        width = parseInt(parts[0], 10) || 1200;
+        height = parseInt(parts[1], 10) || 628;
+      }
+      const seed = Math.floor(Math.random() * 10000000);
+      imageUrl = `https://image.pollinations.ai/p/${encodeURIComponent(finalPrompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+    } else {
+      // Use generateImage (which attempts Hugging Face, then falls back to Pollinations AI)
+      imageUrl = await generateImage(finalPrompt);
+    }
+
+    res.json({ imageUrl, enhancedPrompt: finalPrompt });
+  } catch (error) {
+    console.error('Edit image error:', error);
+    res.status(500).json({ message: 'Failed to edit image.' });
   }
 };
 
@@ -504,4 +693,5 @@ module.exports = {
   generateSEO,
   generateChat,
   generateBanner,
+  editImage,
 };

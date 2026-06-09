@@ -1,10 +1,17 @@
 import { useState, useContext, useRef } from 'react';
-import { Sparkles, Copy, CheckCircle2, Hash, ImageIcon } from 'lucide-react';
+import { Sparkles, Copy, CheckCircle2, Hash, ImageIcon, Tag } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 
 // Always point to local backend
 const API_BASE_URL = 'http://localhost:5000';
+
+const PLATFORM_ICONS = {
+  Instagram: '📸',
+  LinkedIn: '💼',
+  'Twitter / X': '🐦',
+  Facebook: '👥',
+};
 
 const SocialMedia = () => {
   const { user } = useContext(AuthContext);
@@ -18,9 +25,45 @@ const SocialMedia = () => {
   const [copied, setCopied] = useState(false);
   const [copiedTag, setCopiedTag] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  // Track what was generated so the result panel shows context
+  const [generatedFor, setGeneratedFor] = useState({ platform: '', topic: '' });
+  const [isEditingImage, setIsEditingImage] = useState(false);
+  const [editInstructions, setEditInstructions] = useState('');
+  const [editingLoading, setEditingLoading] = useState(false);
   const imgRef = useRef(null);
 
-  // Capture the displayed image from the <img> element via canvas and open/download it
+  const handleEditImage = async () => {
+    if (!editInstructions.trim()) return;
+    setEditingLoading(true);
+    try {
+      const token = user?.token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && !token.startsWith('guest')) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const { data } = await axios.post(`${API_BASE_URL}/api/ai/edit-image`, {
+        prompt: generatedFor.topic || topic,
+        instructions: editInstructions,
+        generatorType: 'social'
+      }, { headers });
+
+      if (data.imageUrl) {
+        setImageUrl(data.imageUrl);
+        setImageLoaded(false);
+        setIsEditingImage(false);
+        setEditInstructions('');
+      } else {
+        throw new Error('No image returned from server');
+      }
+    } catch (err) {
+      console.error('Error editing image:', err);
+      alert(err?.response?.data?.message || err.message || 'Failed to edit image');
+    } finally {
+      setEditingLoading(false);
+    }
+  };
+
   const handleImageAction = () => {
     if (!imgRef.current) return;
     const img = imgRef.current;
@@ -40,7 +83,6 @@ const SocialMedia = () => {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       }, 'image/jpeg', 0.95);
     } catch {
-      // Cross-origin fallback: just download via link
       const link = document.createElement('a');
       link.download = `ai-generated-${Date.now()}.jpeg`;
       link.href = imageUrl;
@@ -55,6 +97,7 @@ const SocialMedia = () => {
     setImageUrl(null);
     setHashtags([]);
     setImageLoaded(false);
+    setGeneratedFor({ platform: '', topic: '' });
 
     try {
       const token = user?.token;
@@ -69,6 +112,8 @@ const SocialMedia = () => {
       setResult(data.content || '');
       setHashtags(data.hashtags || []);
       if (data.imageUrl) setImageUrl(data.imageUrl);
+      // Store what this result was generated for
+      setGeneratedFor({ platform, topic });
 
     } catch (err) {
       console.error('API Error:', err);
@@ -172,11 +217,33 @@ const SocialMedia = () => {
 
         {/* Result Area */}
         <div className="space-y-4">
+
+          {/* Context Banner — shows what topic/platform was generated for */}
+          {(hasContent || loading) && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 rounded-xl">
+              <span className="text-lg">{PLATFORM_ICONS[loading ? platform : generatedFor.platform] || '📱'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-brand-600 dark:text-brand-400 font-medium uppercase tracking-wide">
+                  {loading ? platform : generatedFor.platform}
+                </p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                  {loading ? topic : generatedFor.topic}
+                </p>
+              </div>
+              {loading && (
+                <div className="w-4 h-4 border-2 border-brand-400/40 border-t-brand-500 rounded-full animate-spin flex-shrink-0" />
+              )}
+            </div>
+          )}
+
           {/* Generated Image */}
           <div className="bg-white dark:bg-brand-dark border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-brand-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Generated Image</span>
+              {generatedFor.topic && !loading && (
+                <span className="ml-auto text-xs text-gray-400 truncate max-w-[140px]">for: {generatedFor.topic}</span>
+              )}
             </div>
             <div className="relative min-h-[220px] flex items-center justify-center bg-gray-50 dark:bg-brand-darker">
               {loading ? (
@@ -194,16 +261,22 @@ const SocialMedia = () => {
                     src={imageUrl}
                     alt="AI Generated"
                     className="w-full h-auto object-cover"
-                    crossOrigin="anonymous"
                     onLoad={() => setImageLoaded(true)}
                     onError={() => setImageLoaded(true)}
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                     <button
                       onClick={handleImageAction}
-                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-md text-sm font-medium border border-white/20 transition-colors cursor-pointer flex items-center gap-2"
+                      className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-md text-xs font-medium border border-white/20 transition-colors cursor-pointer flex items-center gap-1.5"
                     >
-                      ⬇ Download Image
+                      ⬇ Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingImage(true)}
+                      className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      ✏️ Edit
                     </button>
                   </div>
                 </div>
@@ -214,12 +287,66 @@ const SocialMedia = () => {
                 </div>
               )}
             </div>
+            {imageUrl && isEditingImage && (
+              <div className="p-4 bg-gray-50 dark:bg-brand-darker border-t border-gray-100 dark:border-gray-800">
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  Describe the changes you want to make to the image:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editInstructions}
+                    onChange={(e) => setEditInstructions(e.target.value)}
+                    placeholder="e.g. Add a red coffee mug on the desk, warmer colors"
+                    className="flex-1 px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-gray-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500 text-gray-900 dark:text-white"
+                    disabled={editingLoading}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleEditImage();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleEditImage}
+                    disabled={editingLoading || !editInstructions.trim()}
+                    className="px-3 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+                  >
+                    {editingLoading ? (
+                      <>
+                        <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : 'Apply'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingImage(false);
+                      setEditInstructions('');
+                    }}
+                    className="px-3 py-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-xl hover:bg-gray-300 transition-colors"
+                    disabled={editingLoading}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Caption */}
           <div className="bg-white dark:bg-brand-dark border border-gray-200 dark:border-gray-800 rounded-2xl">
             <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Caption</span>
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-brand-500" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Caption
+                  {generatedFor.platform && !loading && (
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">
+                      — {generatedFor.platform}
+                    </span>
+                  )}
+                </span>
+              </div>
               {hasContent && (
                 <button
                   onClick={handleCopy}
@@ -249,7 +376,14 @@ const SocialMedia = () => {
           <div className="bg-white dark:bg-brand-dark border border-gray-200 dark:border-gray-800 rounded-2xl">
             <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
               <Hash className="w-4 h-4 text-brand-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Hashtags</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Hashtags
+                {generatedFor.topic && !loading && (
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">
+                    — for "{generatedFor.topic}"
+                  </span>
+                )}
+              </span>
               {hashtags.length > 0 && <span className="text-xs text-gray-400 ml-auto">{hashtags.length} tags — click to copy</span>}
             </div>
             <div className="p-4">

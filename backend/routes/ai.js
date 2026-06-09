@@ -7,6 +7,7 @@ const {
   generateSEO,
   generateChat,
   generateBanner,
+  editImage,
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -31,5 +32,6 @@ router.post('/email', optionalProtect, generateEmail);
 router.post('/seo', optionalProtect, generateSEO);
 router.post('/chat', optionalProtect, generateChat);
 router.post('/banner', optionalProtect, generateBanner);
+router.post('/edit-image', optionalProtect, editImage);
 
 module.exports = router;
