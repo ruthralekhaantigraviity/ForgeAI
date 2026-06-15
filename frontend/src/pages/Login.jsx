@@ -80,7 +80,7 @@ const Login = () => {
 
             {error && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-6 text-sm text-center">{error}</div>}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                 <input 
@@ -89,6 +89,7 @@ const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker/50 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all outline-none text-gray-900 dark:text-white placeholder-gray-500"
                   placeholder="you@company.com"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -100,6 +101,7 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker/50 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all outline-none text-gray-900 dark:text-white placeholder-gray-500"
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   required
                 />
               </div>
@@ -135,7 +137,7 @@ const Login = () => {
             {resetError && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-6 text-sm text-center">{resetError}</div>}
             {resetMessage && <div className="bg-green-500/10 border border-green-500/50 text-green-500 p-3 rounded-lg mb-6 text-sm text-center">{resetMessage}</div>}
 
-            <form onSubmit={handleResetSubmit} className="space-y-6">
+            <form onSubmit={handleResetSubmit} className="space-y-6" autoComplete="off">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                 <input 
@@ -144,6 +146,7 @@ const Login = () => {
                   onChange={(e) => setResetEmail(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker/50 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all outline-none text-gray-900 dark:text-white placeholder-gray-500"
                   placeholder="you@company.com"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -155,6 +158,7 @@ const Login = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker/50 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all outline-none text-gray-900 dark:text-white placeholder-gray-500"
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   required
                 />
               </div>
