@@ -29,6 +29,7 @@ const ContentHistory = () => {
   const [filter, setFilter] = useState('All');
   const [copiedId, setCopiedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   const isGuest = !user || !user.token || user.token.startsWith('guest');
 
@@ -200,11 +201,13 @@ const ContentHistory = () => {
           {filtered.map((item) => {
             const Icon = iconMap[item.type] || FileText;
             const color = colorMap[item.type] || 'bg-gray-500';
+            const isExpanded = expandedId === item._id;
             const preview = item.content?.substring(0, 120) || '';
             return (
               <div
                 key={item._id}
-                className="bg-white dark:bg-brand-dark/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 hover:border-gray-300 dark:hover:border-gray-600 transition-all group"
+                className="bg-white dark:bg-brand-dark/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 hover:border-gray-300 dark:hover:border-gray-600 transition-all group cursor-pointer"
+                onClick={() => setExpandedId(isExpanded ? null : item._id)}
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
@@ -216,11 +219,25 @@ const ContentHistory = () => {
                       <span className="text-xs text-gray-500 shrink-0">{formatTime(item.createdAt)}</span>
                     </div>
                     <h3 className="text-gray-900 dark:text-white font-medium truncate mb-1">{item.title}</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">{preview}...</p>
+                    
+                    {isExpanded ? (
+                      <div className="mt-3">
+                        {item.metadata?.imageUrl && (
+                          <div className="mb-4">
+                            <img src={item.metadata.imageUrl} alt="Generated" className="w-full max-w-md rounded-xl object-contain shadow-md border border-gray-200 dark:border-gray-700" />
+                          </div>
+                        )}
+                        <div className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+                          {item.content}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">{preview}...</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => handleCopy(item._id, item.content)}
+                      onClick={(e) => { e.stopPropagation(); handleCopy(item._id, item.content); }}
                       className="p-2 rounded-lg hover:bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                       title="Copy"
                     >
@@ -231,7 +248,7 @@ const ContentHistory = () => {
                       )}
                     </button>
                     <button
-                      onClick={() => handleDelete(item._id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
                       disabled={deletingId === item._id}
                       className="p-2 rounded-lg hover:bg-red-500/10 text-gray-600 dark:text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
                       title="Delete"

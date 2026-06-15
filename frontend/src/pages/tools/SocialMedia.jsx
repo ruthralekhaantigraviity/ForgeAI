@@ -90,6 +90,16 @@ const SocialMedia = () => {
 
   const handleGenerate = async (e) => {
     e.preventDefault();
+    
+    const isGuest = !user || !user.token || user.token.startsWith('guest');
+    if (isGuest) {
+      const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+      if (generations >= 1) {
+        alert('Free trial limit reached. Please log in to generate more posts.');
+        return;
+      }
+    }
+
     setLoading(true);
     setResult('');
     setImageUrl(null);
@@ -112,6 +122,11 @@ const SocialMedia = () => {
       if (data.imageUrl) setImageUrl(data.imageUrl);
       // Store what this result was generated for
       setGeneratedFor({ platform, topic });
+
+      if (isGuest) {
+        const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+        localStorage.setItem('guest_generations', (generations + 1).toString());
+      }
 
     } catch (err) {
       console.error('API Error:', err);

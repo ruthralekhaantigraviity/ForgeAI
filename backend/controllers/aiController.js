@@ -43,7 +43,16 @@ const generateImage = async (prompt, width = 1024, height = 1024) => {
   } catch (err) {
     const errMsg = err.response ? Buffer.from(err.response.data).toString('utf-8') : err.message;
     console.error('⚠️ Hugging Face image generation failed:', errMsg);
-    throw new Error(`Hugging Face image generation failed: ${errMsg}`);
+    console.log('🔄 Falling back to Pollinations AI...');
+    
+    // Fallback to Pollinations AI
+    // Truncate prompt to avoid URL length limit issues
+    const safePrompt = prompt.substring(0, 800);
+    const seed = Math.floor(Math.random() * 10000000);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+    
+    console.log('✅ Image URL generated via Pollinations AI');
+    return pollinationsUrl;
   }
 };
 
@@ -518,7 +527,10 @@ Return ONLY the final prompt text, nothing else.`;
         type: wantsImage ? 'Image' : 'Chat',
         title: message.substring(0, 60),
         content,
-        metadata: { imageUrl: imageUrl || undefined },
+        metadata: { 
+          imageUrl: imageUrl || undefined,
+          userMessage: message 
+        },
       });
     }
 
@@ -686,6 +698,85 @@ Return ONLY the final modified image prompt. Do not add any introduction, explan
   }
 };
 
+// @desc    Upload a user photo and apply AI edits
+// @route   POST /api/ai/upload-edit
+const uploadAndEditImage = async (req, res) => {
+  try {
+    const { imageBase64, instructions, size } = req.body;
+
+    if (!imageBase64 || !instructions) {
+      return res.status(400).json({ message: 'Image and instructions are required.' });
+    }
+
+    // Use Gemini Vision to understand the uploaded image and build an edit prompt
+    const geminiKey = process.env.GEMINI_API_KEY;
+    let editedPrompt = `A photo that has been edited: ${instructions}. High quality, professional photo editing result.`;
+
+    if (geminiKey) {
+      try {
+        // Strip data URL prefix to get pure base64
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const mimeType = imageBase64.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg';
+
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+          {
+            contents: [{
+              parts: [
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64Data,
+                  }
+                },
+                {
+                  text: `You are an expert photo editing AI. Analyze this image and generate a detailed image generation prompt that recreates this image with the following edits applied: "${instructions}". 
+Return ONLY the image generation prompt, no explanations or quotes. Be very descriptive about the visual elements, style, lighting, colors, and composition of the edited result.`
+                }
+              ]
+            }]
+          }
+        );
+
+        const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          editedPrompt = text.trim();
+        }
+      } catch (geminiErr) {
+        console.error('Gemini Vision error:', geminiErr.message);
+        // Fall back to simple prompt
+        editedPrompt = `Photo with the following edits applied: ${instructions}. High quality, realistic result.`;
+      }
+    }
+
+    // Generate the edited image using HuggingFace / Fallback
+    let width = 1024, height = 1024;
+    if (size && size.includes('x')) {
+      const parts = size.split('x');
+      width = parseInt(parts[0], 10) || 1024;
+      height = parseInt(parts[1], 10) || 1024;
+    }
+
+    const imageUrl = await generateImage(editedPrompt, width, height);
+
+    // Save to history if logged in
+    if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
+      await GeneratedContent.create({
+        user: req.user._id,
+        type: 'Image',
+        title: `Photo edit: ${instructions.substring(0, 50)}`,
+        content: editedPrompt,
+        metadata: { imageUrl, instructions },
+      });
+    }
+
+    res.json({ imageUrl, enhancedPrompt: editedPrompt });
+  } catch (error) {
+    console.error('Upload & edit error:', error);
+    res.status(500).json({ message: 'Failed to process and edit the uploaded image.' });
+  }
+};
+
 module.exports = {
   generateSocialPost,
   generateAdCopy,
@@ -694,4 +785,5 @@ module.exports = {
   generateChat,
   generateBanner,
   editImage,
+  uploadAndEditImage,
 };

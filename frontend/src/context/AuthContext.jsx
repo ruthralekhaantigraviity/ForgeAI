@@ -26,13 +26,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (name, email, password) => {
-    const { data } = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+    await axios.post(`${API_BASE_URL}/api/auth/register`, {
       name,
       email,
       password,
     });
-    setUser(data);
-    localStorage.setItem('userInfo', JSON.stringify(data));
   };
 
   const loginAsGuest = () => {
@@ -49,13 +47,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('userInfo', JSON.stringify(guestUser));
   };
 
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('userInfo', JSON.stringify(userData));
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('userInfo');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginAsGuest, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, loginAsGuest, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

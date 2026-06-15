@@ -1,7 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Maximize, 
-  Minimize,
   Settings2, 
   Plus, 
   Mic,
@@ -76,11 +74,11 @@ const Dashboard = () => {
   const { user } = useContext(AuthContext);
   const [query, setQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [messages, setMessages] = useState([]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [error, setError] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [selectedModel, setSelectedModel] = useState('Forge Ultra');
   const [autoSave, setAutoSave] = useState(true);
   const [attachedImage, setAttachedImage] = useState(null);
@@ -97,27 +95,51 @@ const Dashboard = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
 
-  const dashboardRef = useRef(null);
-
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+    const loadHistory = async () => {
+      if (!user || !user.token || user.token.startsWith('guest')) {
+        setIsLoadingHistory(false);
+        return;
+      }
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/api/history`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        
+        // Filter for Chat and Image types
+        const chatItems = data.filter(item => item.type === 'Chat' || item.type === 'Image');
+        
+        if (chatItems.length > 0) {
+          // They come newest first, so we reverse to get oldest first
+          const historyMessages = [];
+          chatItems.reverse().forEach(item => {
+            // Reconstruct user message from metadata or title
+            historyMessages.push({
+              role: 'user',
+              content: item.metadata?.userMessage || item.title
+            });
+            // Reconstruct AI message
+            historyMessages.push({
+              role: 'ai',
+              content: item.content,
+              imageUrl: item.metadata?.imageUrl || null
+            });
+          });
+          
+          setMessages(historyMessages);
+          setHasSubmitted(true);
+        }
+      } catch (err) {
+        console.error('Failed to load history on dashboard:', err);
+      } finally {
+        setIsLoadingHistory(false);
+      }
     };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+    
+    loadHistory();
+  }, [user]);
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      // Enter fullscreen on the dashboard container if available, fallback to document element
-      const el = dashboardRef.current || document.documentElement;
-      el.requestFullscreen().catch(err => {
-        console.error('Fullscreen error:', err);
-      });
-    } else {
-      document.exitFullscreen();
-    }
-  };
+  const dashboardRef = useRef(null);
 
   // ── Mic / Speech-to-text ─────────────────────────────────────────
   const finalTranscriptRef = useRef('');
@@ -281,6 +303,15 @@ const Dashboard = () => {
     const text = (overrideQuery || query).trim();
     if (!text || isProcessing) return;
 
+    const isGuest = !user || !user.token || user.token.startsWith('guest');
+    if (isGuest) {
+      const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+      if (generations >= 1) {
+        setError('Free trial limit reached. Please log in to continue generating.');
+        return;
+      }
+    }
+
     setHasSubmitted(true);
     setIsProcessing(true);
     setError(null);
@@ -304,6 +335,11 @@ const Dashboard = () => {
 
       const aiMsg = { role: 'ai', content: data.content, imageUrl: data.imageUrl || null };
       setMessages(prev => [...prev, aiMsg]);
+
+      if (isGuest) {
+        const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+        localStorage.setItem('guest_generations', (generations + 1).toString());
+      }
     } catch (err) {
       console.error('API error:', err);
       setError('Could not reach the server. Make sure the backend is running.');
@@ -339,13 +375,6 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={toggleFullscreen}
-  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm"
->
-  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-  <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
-</button>
           <button
             onClick={() => setShowOptions(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm shadow-sm"
@@ -383,7 +412,11 @@ const Dashboard = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto mb-4 relative">
-        {!hasSubmitted ? (
+        {isLoadingHistory ? (
+          <div className="h-full flex items-center justify-center">
+            <RefreshCw className="w-8 h-8 text-brand-500 animate-spin" />
+          </div>
+        ) : !hasSubmitted ? (
           // Welcome / Orb State
           <div className="h-full flex flex-col items-center justify-center relative">
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-600/5 dark:bg-brand-600/10 rounded-full blur-[100px] pointer-events-none" />
@@ -619,26 +652,7 @@ const Dashboard = () => {
           </div>
         </form>
 
-        {/* Suggestions — only before first submit */}
-        {!hasSubmitted && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-4"
-          >
-            <div className="flex flex-wrap justify-center gap-2">
-              {suggestions.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSuggestionClick(s)}
-                  className="px-4 py-2 rounded-full bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800/80 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-brand-500/50 dark:hover:border-brand-500/50 transition-all text-sm shadow-sm"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
+
       </div>
 
       {/* Options Modal */}

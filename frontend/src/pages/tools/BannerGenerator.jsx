@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Sparkles, Download, Image as ImageIcon, RefreshCw, Wand2 } from 'lucide-react';
+import { Sparkles, Download, Image as ImageIcon, RefreshCw, Wand2, Upload, X } from 'lucide-react';
 import axios from 'axios';
 import API_BASE_URL from '../../config/api';
 
@@ -25,6 +25,12 @@ const BannerGenerator = () => {
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [editInstructions, setEditInstructions] = useState('');
   const [editingLoading, setEditingLoading] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'upload'
+  const [uploadedImageBase64, setUploadedImageBase64] = useState('');
+  const [uploadInstructions, setUploadInstructions] = useState('');
+  const fileInputRef = useRef(null);
+
   const imgRef = useRef(null);
 
   const handleEditImage = async () => {
@@ -71,6 +77,18 @@ const BannerGenerator = () => {
 
   const handleGenerate = async (e) => {
     e.preventDefault();
+
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    const isGuest = !userInfo || !userInfo.token || userInfo.token.startsWith('guest');
+    
+    if (isGuest) {
+      const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+      if (generations >= 1) {
+        setError('Free trial limit reached. Please log in to generate more banners.');
+        return;
+      }
+    }
+
     setLoading(true);
     setBannerUrl('');
     setEnhancedPrompt('');
@@ -94,12 +112,96 @@ const BannerGenerator = () => {
       if (data.imageUrl) {
         setBannerUrl(data.imageUrl);
         if (data.enhancedPrompt) setEnhancedPrompt(data.enhancedPrompt);
+
+        if (isGuest) {
+          const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+          localStorage.setItem('guest_generations', (generations + 1).toString());
+        }
       } else {
         throw new Error('No image returned from server');
       }
     } catch (err) {
       console.error('Banner generation error:', err);
       setError(err?.response?.data?.message || err.message || 'Failed to generate banner. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedImageBase64(reader.result);
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadAndEdit = async (e) => {
+    e.preventDefault();
+    if (!uploadedImageBase64 || !uploadInstructions.trim()) return;
+
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    const isGuest = !userInfo || !userInfo.token || userInfo.token.startsWith('guest');
+    
+    if (isGuest) {
+      const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+      if (generations >= 1) {
+        setError('Free trial limit reached. Please log in to generate more banners.');
+        return;
+      }
+    }
+
+    setLoading(true);
+    setBannerUrl('');
+    setEnhancedPrompt('');
+    setImageLoaded(false);
+    setError('');
+
+    try {
+      const token = userInfo?.token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && !token.startsWith('guest')) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const { data } = await axios.post(
+        `${API_BASE_URL}/api/ai/upload-edit`,
+        {
+          imageBase64: uploadedImageBase64,
+          instructions: uploadInstructions,
+          size
+        },
+        { headers, timeout: 60000 }
+      );
+
+      if (data.imageUrl) {
+        setBannerUrl(data.imageUrl);
+        if (data.enhancedPrompt) setEnhancedPrompt(data.enhancedPrompt);
+
+        if (isGuest) {
+          const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+          localStorage.setItem('guest_generations', (generations + 1).toString());
+        }
+      } else {
+        throw new Error('No image returned from server');
+      }
+    } catch (err) {
+      console.error('Upload & Edit error:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to process uploaded image. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -153,9 +255,35 @@ const BannerGenerator = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Input Form */}
-        <div className="bg-white dark:bg-brand-dark/50 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl h-fit">
-          <form onSubmit={handleGenerate} className="space-y-6">
+        {/* Input Form Area */}
+        <div className="bg-white dark:bg-brand-dark/50 border border-gray-200 dark:border-gray-800 rounded-2xl h-fit overflow-hidden flex flex-col">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 dark:border-gray-800">
+            <button
+              onClick={() => { setActiveTab('generate'); setError(''); }}
+              className={`flex-1 py-4 text-sm font-medium transition-colors ${
+                activeTab === 'generate'
+                  ? 'border-b-2 border-pink-500 text-pink-500 bg-pink-50/50 dark:bg-pink-500/10'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 bg-gray-50 dark:bg-brand-dark/30'
+              }`}
+            >
+              Generate from Scratch
+            </button>
+            <button
+              onClick={() => { setActiveTab('upload'); setError(''); }}
+              className={`flex-1 py-4 text-sm font-medium transition-colors ${
+                activeTab === 'upload'
+                  ? 'border-b-2 border-pink-500 text-pink-500 bg-pink-50/50 dark:bg-pink-500/10'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 bg-gray-50 dark:bg-brand-dark/30'
+              }`}
+            >
+              Upload & Edit Photo
+            </button>
+          </div>
+
+          <div className="p-6">
+            {activeTab === 'generate' ? (
+              <form onSubmit={handleGenerate} className="space-y-6">
 
             {/* Prompt */}
             <div>
@@ -232,13 +360,112 @@ const BannerGenerator = () => {
               )}
             </button>
 
-            {/* Error */}
-            {error && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                ❌ {error}
+              {error && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  ❌ {error}
+                </div>
+              )}
+            </form>
+            ) : (
+            <form onSubmit={handleUploadAndEdit} className="space-y-6">
+              {/* Photo Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Upload Original Photo
+                </label>
+                
+                {!uploadedImageBase64 ? (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-40 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-brand-darker flex flex-col items-center justify-center cursor-pointer hover:border-pink-500 transition-colors hover:bg-pink-50 dark:hover:bg-pink-500/5 group"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400 group-hover:text-pink-500 mb-3" />
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-pink-500">Click to browse or drag & drop</p>
+                    <p className="text-xs text-gray-500 mt-1">JPEG, PNG up to 5MB</p>
+                  </div>
+                ) : (
+                  <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-brand-darker flex items-center justify-center">
+                    <img src={uploadedImageBase64} alt="Uploaded" className="max-w-full max-h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setUploadedImageBase64('')}
+                      className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg backdrop-blur-sm transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/jpeg,image/png,image/webp" 
+                  onChange={handleFileUpload}
+                />
               </div>
+
+              {/* Edit Instructions */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  How should we edit this photo?
+                </label>
+                <textarea
+                  value={uploadInstructions}
+                  onChange={(e) => setUploadInstructions(e.target.value)}
+                  rows="3"
+                  placeholder="e.g. Turn the background into a tropical beach, make it sunset lighting..."
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none text-gray-900 dark:text-white resize-none"
+                  required
+                />
+              </div>
+
+              {/* Size */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Target Size
+                </label>
+                <select
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none text-gray-900 dark:text-white appearance-none"
+                >
+                  {SIZES.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label} ({s.value})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Generate Button */}
+              <button
+                type="submit"
+                disabled={loading || !uploadedImageBase64 || !uploadInstructions.trim()}
+                className="w-full py-4 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 disabled:hover:bg-pink-600 text-white rounded-xl font-medium shadow-lg hover:shadow-pink-500/25 transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing & Editing...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    Apply Edits
+                  </>
+                )}
+              </button>
+
+              {/* Error */}
+              {error && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  ❌ {error}
+                </div>
+              )}
+            </form>
             )}
-          </form>
+          </div>
         </div>
 
         {/* Result */}

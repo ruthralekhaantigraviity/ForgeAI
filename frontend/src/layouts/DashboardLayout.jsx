@@ -1,5 +1,7 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import axios from 'axios';
+import API_BASE_URL from '../config/api';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -18,7 +20,8 @@ import {
   Shield,
   HelpCircle,
   Menu,
-  X
+  X,
+  History
 } from 'lucide-react';
 
 const SidebarLink = ({ to, icon: Icon, currentPath, title }) => {
@@ -39,11 +42,75 @@ const SidebarLink = ({ to, icon: Icon, currentPath, title }) => {
 };
 
 const DashboardLayout = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUser } = useContext(AuthContext);
   const location = useLocation();
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [isSidebarHidden, setIsSidebarHidden] = useState(() => window.innerWidth < 768);
   const [activeModal, setActiveModal] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef(null);
+  
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Auto-focus search input when opened
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  // Close search on Escape key
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        setShowSearch(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
+
+  // Reset search when any modal opens
+  useEffect(() => {
+    if (activeModal) {
+      setShowSearch(false);
+      setSearchQuery('');
+    }
+  }, [activeModal]);
+
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name);
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!user || user.token.startsWith('guest')) {
+      alert('Guest profile cannot be updated.');
+      return;
+    }
+    
+    try {
+      setIsSavingProfile(true);
+      const { data } = await axios.put(
+        `${API_BASE_URL}/api/auth/profile`,
+        { name: profileName },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      updateUser(data);
+      alert('Profile successfully saved!');
+      setActiveModal(null);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-[#0a0f1c] text-gray-900 dark:text-gray-100 overflow-hidden font-sans transition-colors duration-300">
@@ -73,6 +140,7 @@ const DashboardLayout = () => {
           <SidebarLink to="/dashboard/email" icon={Mail} currentPath={location.pathname} title="Email Campaigns" />
           <SidebarLink to="/dashboard/seo" icon={FileText} currentPath={location.pathname} title="SEO Articles" />
           <SidebarLink to="/dashboard/banner" icon={ImageIcon} currentPath={location.pathname} title="Banner Generator" />
+          <SidebarLink to="/dashboard/history" icon={History} currentPath={location.pathname} title="Content History" />
         </nav>
 
         <div className="mt-auto flex flex-col gap-1 w-full items-center">
@@ -98,14 +166,44 @@ const DashboardLayout = () => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden sm:block flex-1 max-w-2xl relative">
-            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search workspaces..." 
-              className="w-full bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white pl-12 pr-4 py-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500/50 shadow-sm"
-            />
+
+          {/* Expandable Search Bar */}
+          <div className="flex-1 flex items-center gap-2">
+            <AnimatePresence>
+              {showSearch && (
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: '100%', opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="relative max-w-md overflow-hidden"
+                >
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoComplete="off"
+                    placeholder="Search..."
+                    className="w-full bg-white dark:bg-[#151b2b] border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white pl-10 pr-4 py-2 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 shadow-sm"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => { setShowSearch(prev => !prev); setSearchQuery(''); }}
+              className={`p-2.5 rounded-full border transition-colors shadow-sm shrink-0 ${
+                showSearch
+                  ? 'bg-brand-500 border-brand-500 text-white'
+                  : 'bg-white dark:bg-[#151b2b] border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-700'
+              }`}
+              title={showSearch ? 'Close Search' : 'Search'}
+            >
+              <Search className="w-5 h-5" />
+            </button>
           </div>
+
           <div className="flex items-center gap-4 ml-6 relative">
             {/* Settings */}
             <div className="relative">
@@ -218,7 +316,8 @@ const DashboardLayout = () => {
                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Full Name</label>
                       <input 
                         type="text" 
-                        defaultValue={user?.name || 'Guest User'} 
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
                     </div>
@@ -233,10 +332,11 @@ const DashboardLayout = () => {
                     </div>
                   </div>
                   <button 
-                    onClick={() => { alert('Profile successfully saved!'); setActiveModal(null); }}
-                    className="w-full mt-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium text-sm transition-colors shadow-lg shadow-brand-500/10"
+                    onClick={handleSaveProfile}
+                    disabled={isSavingProfile}
+                    className="w-full mt-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium text-sm transition-colors shadow-lg shadow-brand-500/10 disabled:opacity-50"
                   >
-                    Save Changes
+                    {isSavingProfile ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               )}
@@ -248,7 +348,8 @@ const DashboardLayout = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Current Password</label>
                       <input 
-                        type="password" 
+                        type="password"
+                        autoComplete="current-password"
                         placeholder="••••••••" 
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
@@ -256,7 +357,8 @@ const DashboardLayout = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">New Password</label>
                       <input 
-                        type="password" 
+                        type="password"
+                        autoComplete="new-password"
                         placeholder="••••••••" 
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
@@ -264,7 +366,8 @@ const DashboardLayout = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Confirm New Password</label>
                       <input 
-                        type="password" 
+                        type="password"
+                        autoComplete="new-password"
                         placeholder="••••••••" 
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
