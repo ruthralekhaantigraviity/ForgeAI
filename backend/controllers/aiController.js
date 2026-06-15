@@ -398,29 +398,85 @@ Do not add any text on the image. Return ONLY the description, nothing else.`;
 // @route   POST /api/ai/email
 const generateEmail = async (req, res) => {
   try {
-    const { emailType, brand, audience, keyMessage } = req.body;
+    const { emailType, recipientName, senderName, companyName, purpose, tone } = req.body;
 
-    if (!brand) {
-      return res.status(400).json({ message: 'Brand name is required' });
+    const resolvedType = emailType || 'Professional Email';
+    const recipient = recipientName || 'Sir/Madam';
+    const sender = senderName || 'The Team';
+    const company = companyName || '';
+
+    if (!purpose) {
+      return res.status(400).json({ message: 'Purpose is required' });
     }
 
-    const systemPrompt = `You are an expert email marketing copywriter. Generate a professional ${emailType || 'Welcome Email'} for the brand "${brand}". Include subject line, body text with proper formatting, merge tags like {{first_name}}, and a clear CTA.`;
-    const userPrompt = `Create a ${emailType} for brand "${brand}". Target audience: ${audience || 'subscribers'}. Key message: ${keyMessage || 'engagement'}.`;
+    const systemPrompt = `You are an expert professional email writer. Your job is to generate a well-structured, context-appropriate email.
+
+STRICT RULES:
+- Email Type: "${resolvedType}" — the email MUST match this type exactly in style, structure, and intent.
+- Do NOT generate promotional, marketing, or welcome-style content UNLESS the email type is specifically "Welcome Email", "Promotional Email", "Newsletter", "Sales Email", or "Marketing" related.
+- For HR types (Termination Letter, Offer Letter, Warning Letter, Promotion Announcement, etc.): use formal corporate HR language. Be direct, respectful, and legally careful.
+- For PR types (Press Release, Partnership Request, Meeting Request): use formal business communication style.
+- For Apology or Empathetic emails: use a warm, sincere, and accountable tone.
+- Tone to use: ${tone || 'Professional'}.
+- Adapt greetings and closings to fit the email type and tone.
+
+OUTPUT FORMAT — Return EXACTLY in this format, no extra commentary:
+
+Subject: [Generated Subject Line]
+
+Dear ${recipient},
+
+[Email Body — clear, relevant paragraphs matching the email type]
+
+Best regards,
+${sender}${company ? `\n${company}` : ''}`;
+
+    const userPrompt = `Generate a ${resolvedType} with the following details:
+- Email Type: ${resolvedType}
+- Recipient: ${recipient}
+- Sender: ${sender}${company ? `\n- Company: ${company}` : ''}
+- Tone: ${tone || 'Professional'}
+- Purpose / Key Details: ${purpose}`;
 
     let content = await generateText(systemPrompt, userPrompt);
 
+    // ── Smart dynamic fallbacks per email type ──
     if (!content) {
-      const et = (emailType || '').toLowerCase();
+      const et = resolvedType.toLowerCase();
+
       if (et.includes('termination')) {
-        content = `Subject: Important Information Regarding Your Employment at ${brand}\n\nDear {{first_name}},\n\nThis email is to confirm that your employment with ${brand} has been terminated effective immediately.\n\n${keyMessage ? `Reason/Details: ${keyMessage}\n\n` : ''}Please review the attached documents for information regarding your final pay and benefits.\n\nSincerely,\nHR Department\n${brand}`;
+        content = `Subject: Termination of Employment — ${recipient}\n\nDear ${recipient},\n\nWe regret to inform you that your employment with ${company || 'the company'} has been terminated, effective immediately.\n\n${purpose}\n\nPlease return all company property and complete the exit formalities at your earliest convenience. Your final settlement will be processed as per the terms of your employment agreement.\n\nWe appreciate your contributions during your tenure and wish you the best in your future endeavors.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
       } else if (et.includes('offer')) {
-        content = `Subject: Job Offer from ${brand} 🎉\n\nDear {{first_name}},\n\nWe are absolutely thrilled to offer you a position at ${brand}!\n\n${keyMessage ? `Key details: ${keyMessage}\n\n` : ''}We believe your skills as a ${audience || 'professional'} will be incredibly valuable to our team.\nPlease review the attached offer letter and let us know if you have any questions.\n\nBest regards,\nThe ${brand} Team`;
-      } else if (et.includes('sales')) {
-        content = `Subject: Special Offer from ${brand} Just For You!\n\nHi {{first_name}},\n\nLooking for a better way to handle your workflow?\n\n${keyMessage ? `Here is what we have for you: ${keyMessage}\n\n` : ''}Click the link below to claim your exclusive deal.\n\nBest,\nThe ${brand} Team`;
+        content = `Subject: Job Offer — ${resolvedType} from ${company || sender}\n\nDear ${recipient},\n\nWe are pleased to extend this formal offer of employment to you.\n\n${purpose}\n\nPlease review the attached offer letter carefully and confirm your acceptance by the date specified. Should you have any questions, do not hesitate to reach out.\n\nWe look forward to welcoming you to our team.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('warning')) {
+        content = `Subject: Formal Warning Notice — ${recipient}\n\nDear ${recipient},\n\nThis letter serves as a formal written warning regarding the matter outlined below.\n\n${purpose}\n\nWe expect immediate and sustained improvement in the areas mentioned above. Failure to comply may result in further disciplinary action, up to and including termination of employment.\n\nPlease acknowledge receipt of this letter by signing the attached copy.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('promotion')) {
+        content = `Subject: Congratulations on Your Promotion — ${recipient}\n\nDear ${recipient},\n\nIt is with great pleasure that we formally announce your promotion, effective immediately.\n\n${purpose}\n\nYour dedication, hard work, and consistent performance have made you an invaluable member of our team. We are confident you will excel in your new role.\n\nCongratulations once again, and we look forward to your continued growth.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('meeting')) {
+        content = `Subject: Meeting Request — ${purpose.substring(0, 50)}\n\nDear ${recipient},\n\nI hope this email finds you well. I am writing to request a meeting at your earliest convenience.\n\n${purpose}\n\nPlease let me know your availability and I will arrange the meeting accordingly. I am flexible with timing and happy to accommodate your schedule.\n\nThank you for your time, and I look forward to hearing from you.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('apology')) {
+        content = `Subject: Sincere Apology — ${company || sender}\n\nDear ${recipient},\n\nI am writing to sincerely apologize for the inconvenience caused.\n\n${purpose}\n\nWe take full responsibility for this matter and are committed to ensuring it does not happen again. We deeply value your trust and are taking immediate steps to resolve the situation.\n\nThank you for your patience and understanding.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
       } else if (et.includes('press release') || et.includes('release')) {
-        content = `Subject: FOR IMMEDIATE RELEASE: ${brand} Announces Exciting News\n\n${brand} is proud to announce a major milestone.\n\n${keyMessage ? `${keyMessage}\n\n` : ''}For more information, please visit our website or contact our PR department.\n\nAbout ${brand}:\nWe are dedicated to serving ${audience || 'our amazing customers'}.\n\nMedia Contact:\npress@${brand.toLowerCase().replace(/\\s+/g, '')}.com`;
+        content = `Subject: FOR IMMEDIATE RELEASE — ${company || sender} Announces Update\n\nDear ${recipient},\n\n${company || sender} is pleased to announce the following:\n\n${purpose}\n\nFor further information or media inquiries, please contact us directly.\n\nAbout ${company || sender}:\nWe are committed to delivering excellence in everything we do.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('partnership')) {
+        content = `Subject: Partnership Opportunity — ${company || sender}\n\nDear ${recipient},\n\nI hope this message finds you well. I am reaching out to explore a potential partnership opportunity.\n\n${purpose}\n\nWe believe this collaboration would be mutually beneficial, and I would love to schedule a call to discuss this further at your convenience.\n\nThank you for considering this opportunity. I look forward to your response.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('follow-up') || et.includes('followup')) {
+        content = `Subject: Follow-up: ${purpose.substring(0, 50)}\n\nDear ${recipient},\n\nI hope you are doing well. I am following up regarding our previous conversation.\n\n${purpose}\n\nPlease let me know if you need any additional information or if there is anything I can do to assist. I look forward to your response.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
+      } else if (et.includes('sales') || et.includes('promotional')) {
+        content = `Subject: Exclusive Offer from ${company || sender} — Don't Miss Out!\n\nDear ${recipient},\n\n${purpose}\n\nWe'd love for you to take advantage of this opportunity. Click the link below or reply to this email to get started.\n\nLooking forward to hearing from you!\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
+
       } else {
-        content = `Subject: Welcome to ${brand} — Let's Get Started! 🚀\n\nHi {{first_name}},\n\nWelcome aboard! We're thrilled to have you join the ${brand} community.\n\nYou've just taken the first step toward ${keyMessage || 'transforming your workflow'}.\n\n📋 Step 1: Complete your profile\n🎯 Step 2: Explore our tools\n🚀 Step 3: Create your first piece of content\n\n${audience ? `As a ${audience}, you'll love our curated features.` : ''}\n\nBest,\nThe ${brand} Team`;
+        // Generic professional fallback
+        content = `Subject: ${resolvedType} — ${purpose.substring(0, 50)}\n\nDear ${recipient},\n\nI hope this email finds you well.\n\n${purpose}\n\nPlease feel free to reach out if you have any questions or require further clarification. I am happy to assist.\n\nBest regards,\n${sender}${company ? `\n${company}` : ''}`;
       }
     }
 
@@ -428,9 +484,9 @@ const generateEmail = async (req, res) => {
       await GeneratedContent.create({
         user: req.user._id,
         type: 'Email',
-        title: `${emailType} for ${brand}`,
+        title: `${resolvedType}${recipient !== 'Sir/Madam' ? ` to ${recipient}` : ''}`,
         content,
-        metadata: { emailType, audience },
+        metadata: { emailType: resolvedType, tone, purpose },
       });
     }
 
