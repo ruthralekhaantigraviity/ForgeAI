@@ -184,13 +184,14 @@ const BannerGenerator = () => {
       const transparentBlob = await removeBackground(imageBlob);
       const transparentUrl = URL.createObjectURL(transparentBlob);
 
-      // 2. Generate new poster background based on user instructions
+      // 2. Generate new poster background based on user instructions, using Vision to preserve the original background
       const { data } = await axios.post(
         `${API_BASE_URL}/api/ai/banner`,
         { 
           prompt: `${uploadInstructions}. Create an empty poster background template, leaving space in the center.`, 
           style: 'Modern', 
-          size 
+          size,
+          originalImageBase64: uploadedImageBase64
         },
         { headers, timeout: 60000 }
       );

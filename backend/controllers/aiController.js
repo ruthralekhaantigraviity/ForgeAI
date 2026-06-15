@@ -57,7 +57,7 @@ const generateImage = async (prompt, width = 1024, height = 1024) => {
 };
 
 // Helper: generate AI text using Gemini API
-const generateText = async (systemPrompt, userPrompt, retries = 3) => {
+const generateText = async (systemPrompt, userPrompt, retries = 3, base64Image = null) => {
   require('dotenv').config({ override: true });
   
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -76,15 +76,20 @@ const generateText = async (systemPrompt, userPrompt, retries = 3) => {
   for (const model of models) {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
+        const parts = [{ text: systemPrompt + '\n\n' + userPrompt }];
+        if (base64Image) {
+          const base64Data = base64Image.split(',')[1] || base64Image;
+          parts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Data
+            }
+          });
+        }
+
         const response = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-          {
-            contents: [{
-              parts: [
-                { text: systemPrompt + '\n\n' + userPrompt }
-              ]
-            }]
-          },
+          { contents: [{ parts }] },
           { timeout: 20000 }
         );
         const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -646,7 +651,7 @@ Return ONLY the final prompt text, nothing else.`;
 const generateBanner = async (req, res) => {
   try {
     require('dotenv').config({ override: true });
-    const { prompt, style, size } = req.body;
+    const { prompt, style, size, originalImageBase64 } = req.body;
     
     if (!prompt) {
       return res.status(400).json({ message: 'Prompt is required' });
@@ -661,55 +666,53 @@ const generateBanner = async (req, res) => {
     }
 
     // Step 1: Enhance prompt with Gemini
-    const geminiSystemPrompt = `You are an advanced AI-powered image prompt enhancement engine for a professional marketing and poster generation platform.
+    let geminiSystemPrompt = `You are an advanced AI-powered image prompt enhancement engine for a professional marketing and poster generation platform.
 
 Your task is to convert short user topics into highly detailed, visually accurate, professional image generation prompts suitable for FLUX, SDXL, DALL·E, Stability AI, or similar AI image models.
 
-The generated prompts must create outputs similar to ChatGPT or Gemini image quality.
-
 OBJECTIVE:
-Understand the actual meaning and intent behind the user's topic and automatically generate a complete professional visual concept instead of random unrelated images.
+Understand the actual meaning and intent behind the user's topic and automatically generate a complete professional visual concept.
 
 INSTRUCTIONS:
 - Analyze the topic deeply before generating the prompt.
-- Convert simple topics into professional marketing-quality image prompts.
 - Generate realistic, cinematic, highly detailed visuals.
 - Create visually meaningful scenes related to the topic.
 - Add modern composition, lighting, environment, camera angle, branding style, and poster aesthetics.
-- Automatically choose suitable colors and atmosphere based on the topic.
 - Keep proper empty spacing for titles, headings, and promotional text.
-- Make outputs suitable for:
-  - social media posters
-  - advertisements
-  - banners
-  - recruitment posters
-  - educational creatives
-  - business promotions
-  - startup marketing
-  - modern commercial designs
+- Make outputs suitable for professional marketing graphics.
 
 IMPORTANT RULES:
-- Never generate random unrelated portraits.
-- Avoid unnecessary focus on a single person unless required.
 - Avoid robotic, neon, futuristic, cyberpunk, anime, cartoon, or fantasy styles unless explicitly requested.
-- Do not create low-quality stock-image style compositions.
 - Focus on professional marketing design intelligence.
 - Generate realistic and commercially usable outputs.
-- Prefer balanced compositions instead of close-up portraits.
 - Include realistic business environments where necessary.
 - Add cinematic lighting and premium visual quality.
-- Make the prompt highly optimized for FLUX models.
 
 NEGATIVE PROMPT:
 blurry, low quality, distorted anatomy, extra fingers, ugly face, random portrait, unrelated people, neon glow, cyberpunk, robotic style, anime, cartoon, unrealistic lighting, oversaturated colors, watermark, bad composition, cropped objects, duplicate humans, deformed body, low resolution, text errors, messy layout
 
 OUTPUT FORMAT:
 Return ONLY the final enhanced image generation prompt.
-Do not explain anything.
-Do not add labels.
-Do not add quotation marks.`;
+Do not explain anything.`;
 
-    let enhancedPrompt = await generateText(geminiSystemPrompt, `USER TOPIC:\n${prompt} (${style || 'Modern'} style)`);
+    let userPromptText = `USER TOPIC:\n${prompt} (${style || 'Modern'} style)`;
+
+    // If an original image is provided, we tell the Vision model to preserve its setting
+    if (originalImageBase64) {
+      geminiSystemPrompt += `
+
+CRITICAL INSTRUCTION FOR IMAGE EDITING:
+An original image is provided. The user wants to edit this image by adding elements or changing the atmosphere (e.g. "add a sunrise").
+YOU MUST:
+1. Carefully analyze the setting, environment, background, and landscape of the provided image.
+2. PRESERVE that exact setting in your generated prompt. Do NOT change a rocky ocean into a city, or a forest into a desert, unless the user explicitly asks to change the location.
+3. Incorporate the user's requested edit INTO the original setting.
+4. Describe the preserved background + the user's new additions cohesively.`;
+      
+      userPromptText = `I have attached the original image. PRESERVE ITS ORIGINAL SETTING AND BACKGROUND LOCATION EXACTLY. Add the following user edit to that setting: "${prompt}"`;
+    }
+
+    let enhancedPrompt = await generateText(geminiSystemPrompt, userPromptText, 3, originalImageBase64);
     if (!enhancedPrompt) {
        enhancedPrompt = prompt;
     }
