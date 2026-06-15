@@ -5,6 +5,7 @@ import API_BASE_URL from '../../config/api';
 
 const EmailCampaign = () => {
   const [emailType, setEmailType] = useState('Welcome Email');
+  const [customType, setCustomType] = useState('');
   const [brand, setBrand] = useState('');
   const [audience, setAudience] = useState('');
   const [keyMessage, setKeyMessage] = useState('');
@@ -17,7 +18,7 @@ const EmailCampaign = () => {
     setLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE_URL}/api/ai/email`, {
-        emailType, brand, audience, keyMessage,
+        emailType: emailType === 'Custom' ? customType : emailType, brand, audience, keyMessage,
       });
       setResult(data.content);
     } catch (err) {
@@ -51,22 +52,37 @@ const EmailCampaign = () => {
           <form onSubmit={handleGenerate} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Type</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {['Welcome Email', 'Sales Email', 'Newsletter', 'Re-engagement'].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setEmailType(t)}
-                    className={`py-2.5 px-4 rounded-lg border text-sm transition-all ${
-                      emailType === t
-                        ? 'border-green-500 bg-green-600/20 text-green-400'
-                        : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-brand-darker text-gray-600 dark:text-gray-400 hover:border-gray-600'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              <select
+                value={emailType}
+                onChange={(e) => setEmailType(e.target.value)}
+                className="w-full px-4 py-3 mb-3 bg-gray-50 dark:bg-brand-darker border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-900 dark:text-white"
+              >
+                <optgroup label="Marketing">
+                  <option value="Welcome Email">Welcome Email</option>
+                  <option value="Sales Email">Sales Email</option>
+                  <option value="Newsletter">Newsletter</option>
+                  <option value="Re-engagement">Re-engagement</option>
+                </optgroup>
+                <optgroup label="HR / Corporate">
+                  <option value="Offer Letter">Offer Letter</option>
+                  <option value="Termination Letter">Termination Letter</option>
+                  <option value="Promotion Announcement">Promotion Announcement</option>
+                </optgroup>
+                <optgroup label="PR / Other">
+                  <option value="Press Release">Press Release</option>
+                  <option value="Custom">Custom (Type below)...</option>
+                </optgroup>
+              </select>
+              {emailType === 'Custom' && (
+                <input
+                  type="text"
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  placeholder="e.g. Partnership Request, Apology Email..."
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-darker border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-900 dark:text-white"
+                  required
+                />
+              )}
             </div>
 
             <div>

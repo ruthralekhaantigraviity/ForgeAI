@@ -65,34 +65,51 @@ const generateText = async (systemPrompt, userPrompt, retries = 3) => {
     return null;
   }
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          contents: [{
-            parts: [
-              { text: systemPrompt + '\n\n' + userPrompt }
-            ]
-          }]
+  // Try models in order of preference
+  const models = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-flash-latest',
+    'gemini-2.5-flash',
+  ];
+
+  for (const model of models) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          {
+            contents: [{
+              parts: [
+                { text: systemPrompt + '\n\n' + userPrompt }
+              ]
+            }]
+          },
+          { timeout: 20000 }
+        );
+        const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          console.warn(`Gemini [${model}] response missing text.`);
         }
-      );
-      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        console.warn("Gemini response missing text. Response:", JSON.stringify(response.data, null, 2));
+        if (text) {
+          console.log(`✅ Text generated via Gemini model: ${model}`);
+          return text;
+        }
+      } catch (error) {
+        const status = error.response?.status;
+        if ((status === 503 || status === 429) && attempt < retries) {
+          console.warn(`Gemini [${model}] ${status} error. Retrying attempt ${attempt + 1}/${retries} in 1s...`);
+          await new Promise(res => setTimeout(res, 1000));
+          continue;
+        }
+        console.warn(`Gemini [${model}] failed (${status}). Trying next model...`);
+        break; // Try next model
       }
-      return text || null;
-    } catch (error) {
-      const status = error.response?.status;
-      if (status === 503 && attempt < retries) {
-        console.warn(`Gemini API 503 error. Retrying attempt ${attempt + 1}/${retries} in 1.5 seconds...`);
-        await new Promise(res => setTimeout(res, 1500));
-        continue;
-      }
-      console.error('Gemini API Error:', error.response?.data || error.message);
-      return null;
     }
   }
+
+  console.error('All Gemini models failed.');
+  return null;
 };
 
 // Local fallbacks when Gemini is rate-limited / quota exceeded or key is invalid
@@ -182,11 +199,17 @@ const getLocalFallbackData = (platform, topic, tone) => {
   }
 
   // 8. General (Dynamic) Fallback — uses topic directly
-  const content = `${toneEmoji} Today's focus: **${cleanTopic}**. 🎯 Every great achievement starts with a single step and an unwavering commitment to what matters most. Whether you're just beginning or already deep in the journey — keep pushing, keep creating, keep growing.\n\n${cta}`;
+  const toneLines = {
+    Professional: `In today's competitive landscape, ${cleanTopic} stands out as a key driver of success. 🎯 Businesses that invest in this area consistently see stronger results and deeper customer loyalty.`,
+    Friendly: `We're SO excited about ${cleanTopic} and we think you will be too! 😊 It's one of those things that just makes everything better — come see what the buzz is about!`,
+    Funny: `Nobody asked for a hot take on ${cleanTopic}, but here we are and honestly? Best decision ever. 😂 You're welcome.`,
+    Luxury: `${cleanTopic} — because only the finest will do. ✨ An experience curated for those who appreciate the extraordinary.`,
+  };
+  const content = `${toneLines[tone] || `${toneEmoji} ${cleanTopic} is something worth talking about. Whether you're just discovering it or already a fan, there's always something new to explore and appreciate. 🎯`}\n\n${cta}`;
   const hashtags = [
     primaryTag,
-    `${primaryTag}Vibes`,
-    `${primaryTag}Journey`,
+    `#${baseTag}Tips`,
+    `#${baseTag}Life`,
     '#instagood',
     '#photooftheday',
     '#aesthetic',
@@ -326,7 +349,9 @@ const generateAdCopy = async (req, res) => {
     let content = await generateText(systemPrompt, userPrompt);
 
     if (!content) {
-      content = `📢 ${adType || 'Facebook'} Ad — ${goal || 'Conversions'}\n\n🎯 Headline:\n"Unlock the Future of ${product} — Limited Time Offer!"\n\n📝 Primary Text:\nTired of solutions that don't deliver? We built something different.\n\n${audience ? `Perfect for ${audience}.` : ''}\n\n✅ AI-powered optimization\n✅ Results in 48 hours\n✅ Loved by 10,000+ businesses\n\n👉 CTA: "Get Started Free →"\n\n📌 Description:\nJoin thousands using our platform. Free trial — no credit card required.`;
+      const goalVerb = { Conversions: 'buy now', 'Brand Awareness': 'learn more', 'Lead Generation': 'sign up free', 'App Installs': 'download now', Engagement: 'join the conversation' }[goal] || 'get started';
+      const productShort = product.length > 60 ? product.substring(0, 60) + '...' : product;
+      content = `📢 ${adType || 'Facebook'} Ad — ${goal || 'Conversions'}\n\n🎯 Headline:\n"${productShort} — The Smart Choice for ${audience || 'Everyone'}"\n\n📝 Primary Text:\nLooking for the best in ${product}? You've found it. Here's why thousands of ${audience || 'customers'} trust us:\n\n✅ Proven results with ${product}\n✅ Tailored for ${audience || 'every need'}\n✅ Optimized for ${goal || 'conversions'} from day one\n\n${audience ? `Specifically designed for ${audience} who want to achieve more.` : 'Trusted by businesses worldwide.'}\n\n👉 CTA: "${goalVerb.charAt(0).toUpperCase() + goalVerb.slice(1)} →"\n\n📌 Description:\nDon't miss out — ${productShort} is changing the game for ${audience || 'people'} who want real results.`;
     }
 
     // Enhance image prompt for Ad
@@ -385,7 +410,18 @@ const generateEmail = async (req, res) => {
     let content = await generateText(systemPrompt, userPrompt);
 
     if (!content) {
-      content = `Subject: Welcome to ${brand} — Let's Get Started! 🚀\n\nHi {{first_name}},\n\nWelcome aboard! We're thrilled to have you join the ${brand} community.\n\nYou've just taken the first step toward ${keyMessage || 'transforming your workflow'}.\n\n📋 Step 1: Complete your profile\n🎯 Step 2: Explore our tools\n🚀 Step 3: Create your first piece of content\n\n${audience ? `As a ${audience}, you'll love our curated features.` : ''}\n\nBest,\nThe ${brand} Team`;
+      const et = (emailType || '').toLowerCase();
+      if (et.includes('termination')) {
+        content = `Subject: Important Information Regarding Your Employment at ${brand}\n\nDear {{first_name}},\n\nThis email is to confirm that your employment with ${brand} has been terminated effective immediately.\n\n${keyMessage ? `Reason/Details: ${keyMessage}\n\n` : ''}Please review the attached documents for information regarding your final pay and benefits.\n\nSincerely,\nHR Department\n${brand}`;
+      } else if (et.includes('offer')) {
+        content = `Subject: Job Offer from ${brand} 🎉\n\nDear {{first_name}},\n\nWe are absolutely thrilled to offer you a position at ${brand}!\n\n${keyMessage ? `Key details: ${keyMessage}\n\n` : ''}We believe your skills as a ${audience || 'professional'} will be incredibly valuable to our team.\nPlease review the attached offer letter and let us know if you have any questions.\n\nBest regards,\nThe ${brand} Team`;
+      } else if (et.includes('sales')) {
+        content = `Subject: Special Offer from ${brand} Just For You!\n\nHi {{first_name}},\n\nLooking for a better way to handle your workflow?\n\n${keyMessage ? `Here is what we have for you: ${keyMessage}\n\n` : ''}Click the link below to claim your exclusive deal.\n\nBest,\nThe ${brand} Team`;
+      } else if (et.includes('press release') || et.includes('release')) {
+        content = `Subject: FOR IMMEDIATE RELEASE: ${brand} Announces Exciting News\n\n${brand} is proud to announce a major milestone.\n\n${keyMessage ? `${keyMessage}\n\n` : ''}For more information, please visit our website or contact our PR department.\n\nAbout ${brand}:\nWe are dedicated to serving ${audience || 'our amazing customers'}.\n\nMedia Contact:\npress@${brand.toLowerCase().replace(/\\s+/g, '')}.com`;
+      } else {
+        content = `Subject: Welcome to ${brand} — Let's Get Started! 🚀\n\nHi {{first_name}},\n\nWelcome aboard! We're thrilled to have you join the ${brand} community.\n\nYou've just taken the first step toward ${keyMessage || 'transforming your workflow'}.\n\n📋 Step 1: Complete your profile\n🎯 Step 2: Explore our tools\n🚀 Step 3: Create your first piece of content\n\n${audience ? `As a ${audience}, you'll love our curated features.` : ''}\n\nBest,\nThe ${brand} Team`;
+      }
     }
 
     if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
@@ -421,7 +457,11 @@ const generateSEO = async (req, res) => {
     let content = await generateText(systemPrompt, userPrompt);
 
     if (!content) {
-      content = `# The Ultimate Guide to ${keyword}\n\n**Meta Title:** ${keyword} — Complete Guide | ${new Date().getFullYear()}\n**Meta Description:** Discover the best strategies for ${keyword}. Actionable tips for ${industry || 'businesses'}.\n**Target Keyword:** ${keyword}\n\n## Introduction\n\nIn today's digital landscape, ${keyword} has become critical for any ${industry || 'business'}.\n\n## Why ${keyword} Matters\n\n- 78% of consumers research online before purchasing\n- Companies investing in ${keyword} see 3.5x ROI\n\n## Key Strategies\n\n### 1. Understand Your Audience\n### 2. Create High-Quality Content\n### 3. Optimize for Search Engines\n### 4. Measure and Iterate\n\n## Conclusion\n\nMastering ${keyword} takes time but delivers transformative results.`;
+      const yr = new Date().getFullYear();
+      const industryLabel = industry || 'Business';
+      const wc = parseInt(wordCount) || 800;
+      const ct = contentType || 'Blog Post';
+      content = `# ${ct}: ${keyword.charAt(0).toUpperCase() + keyword.slice(1)} — A Complete ${industryLabel} Guide (${yr})\n\n**Meta Title:** ${keyword} for ${industryLabel} — ${yr} Expert Guide\n**Meta Description:** Everything ${industryLabel} professionals need to know about ${keyword}. Practical, actionable, and up to date for ${yr}.\n**Target Keyword:** ${keyword}\n**Related Keywords:** best ${keyword}, ${keyword} tips, ${keyword} for ${industryLabel.toLowerCase()}, how to use ${keyword}, ${keyword} strategy\n\n---\n\n## Introduction\n\nIn ${yr}, **${keyword}** has become one of the most important topics in the ${industryLabel} space. Whether you're a seasoned professional or just getting started, understanding ${keyword} is essential to staying ahead of your competition.\n\nThis ${ct.toLowerCase()} covers everything you need to know — from the basics to advanced strategies — in a clear, actionable format.\n\n---\n\n## What Is ${keyword.charAt(0).toUpperCase() + keyword.slice(1)}?\n\n${keyword.charAt(0).toUpperCase() + keyword.slice(1)} refers to the practices, tools, and strategies used by ${industryLabel.toLowerCase()} professionals to achieve better outcomes. In simple terms, it's about working smarter, not harder, to reach your goals.\n\n---\n\n## Why ${keyword} Matters for ${industryLabel}\n\n- **Competitive advantage:** Companies that master ${keyword} outperform their peers consistently\n- **Customer satisfaction:** ${keyword} directly impacts the experience you deliver\n- **Cost efficiency:** A solid ${keyword} strategy reduces wasted resources\n- **Measurable results:** Track your progress with clear KPIs and benchmarks\n\n---\n\n## Top Strategies for ${keyword} in ${yr}\n\n### 1. Start with Research\nUnderstand your audience's pain points around ${keyword} before creating any content or campaigns. Use surveys, interviews, and data analytics to guide your strategy.\n\n### 2. Create High-Quality Content\nContent built around **${keyword}** should be specific, actionable, and tailored to ${industryLabel.toLowerCase()} professionals. Quality always beats quantity.\n\n### 3. Optimize for Search\nInclude **${keyword}** naturally in your titles, headings, meta descriptions, and body text. Avoid keyword stuffing — Google rewards readability.\n\n### 4. Measure and Iterate\nSet clear KPIs, track performance monthly, and update your ${keyword} strategy based on what the data tells you.\n\n---\n\n## Common Mistakes to Avoid\n\n- Treating ${keyword} as a one-time task rather than an ongoing strategy\n- Ignoring your ${industryLabel.toLowerCase()} audience's specific needs\n- Focusing on quantity of content over quality\n- Failing to track measurable results\n\n---\n\n## Conclusion\n\nMastering **${keyword}** is a journey, not a destination. With the right strategy, tools, and consistent effort, any ${industryLabel.toLowerCase()} professional can see transformative results. Start today — your competitors already have.\n\n*Estimated reading time: ${Math.ceil(wc / 200)} minutes | Word count: ~${wc} words*`;
     }
 
     if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
@@ -513,10 +553,14 @@ Return ONLY the final prompt text, nothing else.`;
         const subject = message
           .replace(/\b(create|generate|make|show me|give me|an?|the|for|with|and|please|can you|i want|image|picture|photo|banner|poster|illustration)\b/gi, '')
           .trim() || 'this visual';
+        const subjectTag = subject.replace(/\s+/g, '');
 
-        content = `🎨 **Image Generated for "${subject}"**\n\nYour visual is ready above! Here's how to use it:\n\n**📸 Caption Ideas:**\n• "Sometimes a picture says it all. ✨ ${subject.charAt(0).toUpperCase() + subject.slice(1)} — pure art."\n• "Bringing ${subject} to life — one frame at a time. 🎯"\n• "When creativity meets purpose. 💫 What do you think?"\n\n**#️⃣ Hashtags:**\n#${subject.replace(/\s+/g, '')} #AIGenerated #ContentCreation #BrandForge #DigitalMarketing #Creative\n\n**📱 Best Platforms for this visual:**\n• Instagram Feed / Reels cover\n• Facebook Post / Carousel\n• Pinterest Board\n• Twitter / X header\n\n**💡 Pro Tip:** Use this image as your hero visual and pair it with the captions above for maximum engagement!`;
+        content = `🎨 **Image Generated for "${subject}"**\n\nYour visual is ready above! Here are some ways to use it effectively:\n\n**📸 Caption Ideas:**\n• "${subject.charAt(0).toUpperCase() + subject.slice(1)} — exactly what the moment called for. ✨"\n• "Every detail of ${subject} crafted with intention. What do you think? 🎯"\n• "${subject.charAt(0).toUpperCase() + subject.slice(1)}, captured perfectly. Save this one. 💫"\n\n**#️⃣ Hashtags:**\n#${subjectTag} #${subjectTag}Vibes #${subjectTag}Photography #AIGenerated #ContentCreation #BrandForge #DigitalMarketing #Creative #VisualContent #MarketingDesign\n\n**📱 Best Platforms for this visual:**\n• Instagram Feed / Reels cover\n• Facebook Post / Carousel\n• Pinterest Board\n• Twitter / X header\n\n**💡 Pro Tip:** Pair this ${subject} visual with a strong first-line hook to boost your reach by up to 3x!`;
       } else {
-        content = `🤖 **BrandForge AI — Response for "${message}":**\n\n**Immediate Action Plan:**\n\n1️⃣ **Content Strategy** — Targeted content for Instagram, Facebook, LinkedIn, and TikTok\n\n2️⃣ **Ad Copy** — High-converting headlines, descriptions, and CTAs\n\n3️⃣ **Email Campaigns** — Welcome series, promotions, re-engagement flows\n\n4️⃣ **SEO Content** — Keyword-rich blog posts, landing pages, meta descriptions\n\n**💡 Quick Tips:**\n• Define your target audience (age, interest, pain point)\n• Choose 1–2 platforms to focus on first\n• Create 3 content pillars around your topic\n• Post consistently for 30 days and measure results\n\n**🎨 Try image generation:**\n• "Create a sunflower image with caption for Instagram"\n• "Generate a banner image for my summer sale"\n• "Make a product photo for my new sneaker drop"\n\nWant me to generate an image? Just ask! 🎨`;
+        // Build a truly topic-specific response using the user's actual message
+        const msgClean = message.trim();
+        const firstWord = msgClean.split(' ')[0];
+        content = `🤖 **BrandForge AI — Here's your plan for "${msgClean}":**\n\n**📋 What You Asked For:**\n"${msgClean}"\n\n**🚀 Recommended Action Plan:**\n\n1️⃣ **Define Your Goal** — For "${msgClean}", decide whether your priority is awareness, leads, sales, or engagement. Each requires a different approach.\n\n2️⃣ **Create Platform-Specific Content** — "${msgClean}" performs differently on each platform:\n   • **Instagram**: Short, visual caption with strong hook + 5-10 hashtags\n   • **LinkedIn**: Professional insight post with 3 key takeaways\n   • **Twitter/X**: Thread format with concise, punchy points\n   • **Facebook**: Conversational post with a question CTA\n\n3️⃣ **Craft Your Message** — For "${msgClean}", lead with the problem you solve, follow with your unique value, and end with a clear CTA.\n\n4️⃣ **Generate Supporting Assets** — Ask me to:\n   • "Create an Instagram caption about ${firstWord}"\n   • "Write a sales email for ${firstWord}"\n   • "Generate a banner image for ${firstWord}"\n   • "Write SEO blog post about ${firstWord}"\n\n**💡 Quick Wins for "${msgClean}":**\n• Start with one platform, master it, then expand\n• Post consistently for 30 days before judging results\n• Repurpose every piece of content across 3+ formats\n\nTry one of the specific tools in the sidebar for best results! 🎯`;
       }
     }
 

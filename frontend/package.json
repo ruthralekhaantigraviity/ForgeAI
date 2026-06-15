@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-        "dev": "vite",
+    "dev": "vite",
     "start": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -12,7 +12,9 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "@tailwindcss/postcss": "^4.3.0",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "axios": "^1.16.1",
     "framer-motion": "^12.40.0",
@@ -22,8 +24,7 @@
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1",
     "tailwindcss": "^4.3.0",
-    "vite": "^8.0.12",
-    "@vitejs/plugin-react": "^6.0.1"
+    "vite": "^8.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

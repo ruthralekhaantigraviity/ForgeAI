@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Sparkles, Download, Image as ImageIcon, RefreshCw, Wand2, Upload, X } from 'lucide-react';
 import axios from 'axios';
 import API_BASE_URL from '../../config/api';
+import { removeBackground } from '@imgly/background-removal';
 
 const STYLES = ['Modern', 'Minimal', 'Bold', 'Gradient', 'Corporate', 'Playful'];
 
@@ -178,26 +179,68 @@ const BannerGenerator = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      // 1. Remove background from uploaded image
+      const imageBlob = await fetch(uploadedImageBase64).then(res => res.blob());
+      const transparentBlob = await removeBackground(imageBlob);
+      const transparentUrl = URL.createObjectURL(transparentBlob);
+
+      // 2. Generate new poster background based on user instructions
       const { data } = await axios.post(
-        `${API_BASE_URL}/api/ai/upload-edit`,
-        {
-          imageBase64: uploadedImageBase64,
-          instructions: uploadInstructions,
-          size
+        `${API_BASE_URL}/api/ai/banner`,
+        { 
+          prompt: `${uploadInstructions}. Create an empty poster background template, leaving space in the center.`, 
+          style: 'Modern', 
+          size 
         },
         { headers, timeout: 60000 }
       );
 
-      if (data.imageUrl) {
-        setBannerUrl(data.imageUrl);
-        if (data.enhancedPrompt) setEnhancedPrompt(data.enhancedPrompt);
+      if (!data.imageUrl) {
+        throw new Error('No background returned from server');
+      }
 
-        if (isGuest) {
-          const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
-          localStorage.setItem('guest_generations', (generations + 1).toString());
-        }
-      } else {
-        throw new Error('No image returned from server');
+      // 3. Composite images using Canvas
+      const bgImg = new Image();
+      bgImg.crossOrigin = "anonymous";
+      const fgImg = new Image();
+      
+      await Promise.all([
+        new Promise((resolve, reject) => { 
+          bgImg.onload = resolve; 
+          bgImg.onerror = () => reject(new Error('Failed to load background image')); 
+          bgImg.src = data.imageUrl; 
+        }),
+        new Promise((resolve, reject) => { 
+          fgImg.onload = resolve; 
+          fgImg.onerror = () => reject(new Error('Failed to load transparent foreground'));
+          fgImg.src = transparentUrl; 
+        })
+      ]);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = bgImg.width || 1200;
+      canvas.height = bgImg.height || 628;
+      const ctx = canvas.getContext('2d');
+
+      // Draw AI Background
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+
+      // Draw Transparent Foreground (scale to fit nicely in the center)
+      const scale = Math.min((canvas.width * 0.8) / fgImg.width, (canvas.height * 0.9) / fgImg.height);
+      const fgWidth = fgImg.width * scale;
+      const fgHeight = fgImg.height * scale;
+      const x = (canvas.width - fgWidth) / 2;
+      const y = canvas.height - fgHeight; // Anchor to bottom
+      ctx.drawImage(fgImg, x, y, fgWidth, fgHeight);
+
+      const finalDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+      setBannerUrl(finalDataUrl);
+      if (data.enhancedPrompt) setEnhancedPrompt(data.enhancedPrompt);
+
+      if (isGuest) {
+        const generations = parseInt(localStorage.getItem('guest_generations') || '0', 10);
+        localStorage.setItem('guest_generations', (generations + 1).toString());
       }
     } catch (err) {
       console.error('Upload & Edit error:', err);
