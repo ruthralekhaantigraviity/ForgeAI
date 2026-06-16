@@ -91,7 +91,8 @@ const ContentHistory = () => {
   const filtered = items.filter((item) => {
     const matchSearch =
       item.title?.toLowerCase().includes(search.toLowerCase()) ||
-      item.content?.toLowerCase().includes(search.toLowerCase());
+      item.content?.toLowerCase().includes(search.toLowerCase()) ||
+      item.metadata?.userMessage?.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'All' || item.type === filter;
     return matchSearch && matchFilter;
   });
@@ -217,6 +218,11 @@ const ContentHistory = () => {
                     <div className="flex items-center gap-3 mb-1">
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">{item.type}</span>
                       <span className="text-xs text-gray-500 shrink-0">{formatTime(item.createdAt)}</span>
+                      {item.metadata?.imageUrl && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-pink-100 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 flex items-center gap-1">
+                          <ImageIcon className="w-3 h-3" /> Image
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-gray-900 dark:text-white font-medium truncate mb-1">{item.title}</h3>
                     

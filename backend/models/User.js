@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 10, // Default free credits
     },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

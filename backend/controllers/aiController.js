@@ -49,7 +49,7 @@ const generateImage = async (prompt, width = 1024, height = 1024) => {
     // Truncate prompt to avoid URL length limit issues
     const safePrompt = prompt.substring(0, 800);
     const seed = Math.floor(Math.random() * 10000000);
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}&model=flux`;
     
     console.log('✅ Image URL generated via Pollinations AI');
     return pollinationsUrl;
@@ -155,49 +155,49 @@ const getLocalFallbackData = (platform, topic, tone) => {
   // ──────────────────────────────────────────────────────
 
   // 1. Food & Dining
-  if (/pizza|food|dinner|cooking|recipe|burger|cafe|restaurant|eat|lunch|breakfast|coffee|dessert|cake|sushi|pasta|street food|snack/i.test(lowerTopic)) {
+  if (/\b(pizza|food|dinner|cooking|recipe|burger|cafe|restaurant|eat|lunch|breakfast|coffee|dessert|cake|sushi|pasta|street food|snack)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} There's nothing quite like ${cleanTopic} to bring people together and create unforgettable moments. 🍽️ From the first bite to the last, every detail is crafted to perfection. Life is too short for bad food — so why not treat yourself today?\n\n${cta}`;
     const hashtags = [primaryTag, '#foodie', '#foodporn', '#instafood', '#delicious', '#yummy', '#foodphotography', '#foodstagram', '#chefmode', '#recipeoftheday', '#eatlocal', '#tasty', '#foodlover', ...platformTags.slice(0, 2)];
     return { content, hashtags };
   }
 
   // 2. Nature, Travel & Outdoors
-  if (/sunset|sunrise|beach|nature|mountain|lake|sky|forest|sun|sea|ocean|travel|adventure|explore|trip|vacation|journey|waterfall|river|garden|park/i.test(lowerTopic)) {
+  if (/\b(sunset|sunrise|beach|nature|mountain|lake|sky|forest|sun|sea|ocean|travel|adventure|explore|trip|vacation|journey|waterfall|river|garden|park)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} ${cleanTopic} is one of those experiences that stays with you forever. 🌅 Nature has a way of putting everything into perspective — reminding us to slow down, breathe deeply, and soak in every beautiful moment around us.\n\n${cta}`;
     const hashtags = [primaryTag, '#naturephotography', '#wanderlust', '#landscape', '#beautifuldestinations', '#outdoors', '#travel', '#earthpix', '#scenicview', '#peaceful', '#exploremore', '#adventure', ...platformTags.slice(0, 3)];
     return { content, hashtags };
   }
 
   // 3. Fitness & Health
-  if (/gym|fitness|workout|health|healthy|running|exercise|training|active|yoga|meditation|sport|diet|nutrition|muscle|strength/i.test(lowerTopic)) {
+  if (/\b(gym|fitness|workout|health|healthy|running|exercise|training|active|yoga|meditation|sport|diet|nutrition|muscle|strength)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} Committed to ${cleanTopic}? You're already ahead of most! 💪 Every rep, every step, every healthy choice is an investment in the best version of yourself. Progress isn't always linear — but it's always worth it.\n\n${cta}`;
     const hashtags = [primaryTag, '#fitnessmotivation', '#gymlife', '#healthylifestyle', '#fitspiration', '#workout', '#noexcuses', '#strongertogether', '#progressnotperfection', '#wellness', '#fitfam', '#training', ...platformTags.slice(0, 3)];
     return { content, hashtags };
   }
 
   // 4. Tech, Business & Entrepreneurship
-  if (/business|marketing|work|tech|technology|startup|entrepreneur|code|office|productivity|software|digital|ai|app|website|saas|innovation/i.test(lowerTopic)) {
+  if (/\b(business|marketing|work|tech|technology|startup|entrepreneur|code|office|productivity|software|digital|ai|app|website|saas|innovation)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} The future belongs to those who are building it today — and ${cleanTopic} is exactly where it starts. 🚀 In a world that moves fast, staying curious and adaptable is the ultimate competitive advantage. Are you keeping up?\n\n${cta}`;
     const hashtags = [primaryTag, '#startup', '#entrepreneurship', '#technology', '#marketing', '#productivity', '#digitaltransformation', '#businessgrowth', '#innovation', '#leadership', '#successmindset', '#techtrends', ...platformTags.slice(0, 3)];
     return { content, hashtags };
   }
 
   // 5. Fashion & Lifestyle
-  if (/fashion|style|outfit|clothes|luxury|brand|beauty|makeup|skincare|lifestyle|aesthetic|design|art|photography|creative/i.test(lowerTopic)) {
+  if (/\b(fashion|style|outfit|clothes|luxury|brand|beauty|makeup|skincare|lifestyle|aesthetic|design|art|photography|creative)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} When it comes to ${cleanTopic}, every detail tells a story. 🎨 Style is more than what you wear — it's how you express who you are without saying a word. Own your aesthetic, own your story.\n\n${cta}`;
     const hashtags = [primaryTag, '#fashion', '#style', '#aesthetic', '#lifestyle', '#ootd', '#beauty', '#creative', '#artistic', '#design', '#luxury', '#brand', ...platformTags.slice(0, 3)];
     return { content, hashtags };
   }
 
   // 6. Education & Learning
-  if (/learn|education|study|school|college|university|course|skill|knowledge|book|read|teach|tutorial|guide|tips/i.test(lowerTopic)) {
+  if (/\b(learn|education|study|school|college|university|course|skill|knowledge|book|read|teach|tutorial|guide|tips)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} Investing in ${cleanTopic} is one of the smartest things you can do for your future. 📚 Knowledge compounds — every lesson learned today multiplies into opportunities tomorrow. Never stop growing!\n\n${cta}`;
     const hashtags = [primaryTag, '#education', '#learning', '#knowledge', '#studygram', '#growthmindset', '#selfimprovement', '#skills', '#mentalhealth', '#motivated', '#lifelong learner', '#personaldevelopment', ...platformTags.slice(0, 3)];
     return { content, hashtags };
   }
 
   // 7. Music, Entertainment & Events
-  if (/music|song|concert|event|party|festival|show|movie|film|game|sports|match|dance|performance|live/i.test(lowerTopic)) {
+  if (/\b(music|song|concert|event|party|festival|show|movie|film|game|sports|match|dance|performance|live)\b/i.test(lowerTopic)) {
     const content = `${toneEmoji} ${cleanTopic} is the kind of experience that gives you goosebumps and memories that last a lifetime! 🎵 Whether you're there for the vibe, the energy, or the pure joy — this is what living is all about!\n\n${cta}`;
     const hashtags = [primaryTag, '#music', '#entertainment', '#event', '#liveshow', '#concert', '#vibes', '#experience', '#memories', '#fun', '#celebrate', '#community', ...platformTags.slice(0, 3)];
     return { content, hashtags };
@@ -251,18 +251,26 @@ const generateSocialPost = async (req, res) => {
       });
     }
 
-    // ─── Step 1 & 2: Enhance image prompt using AI ─────────────────────────────
+    // ─── Step 1 & 2: Enhance image prompt using tone + platform + topic ────────
+    const toneStyleMap = {
+      'Professional': 'Clean, corporate, polished, formal business photography. Sharp lighting, muted or brand-aligned colors, structured composition.',
+      'Friendly':     'Warm, bright, cheerful, approachable. Soft natural lighting, vibrant but harmonious colors, candid and welcoming feel.',
+      'Funny':        'Playful, quirky, exaggerated, humorous. Bold colors, fun props, lighthearted and energetic composition.',
+      'Luxury':       'Elegant, high-end, sophisticated, premium. Dark dramatic lighting, rich textures, gold or black tones, editorial magazine style.',
+    };
+    const toneStyle = toneStyleMap[tone] || toneStyleMap['Professional'];
+
     const imageEnhanceSystemPrompt = `Convert the following user input into a highly detailed, descriptive image generation prompt.
 Make it suitable for AI image generation.
-If the user asks for a 'poster', 'flyer', 'ad', or 'graphic design', instruct the AI to generate a "modern corporate graphic design poster template, featuring bold typography, clean vector layouts, UI/UX elements, icons, and structured text sections", similar to a high-quality DALL-E 3 graphic design. Emphasize that it must NOT be a photograph of a person, but an actual digital poster layout.
-If the user asks for a specific style (like '3d render', 'cartoon'), ensure the prompt strongly reflects that style. 
-If no style is specified, default to professional, high-quality photography.
-Avoid adding any futuristic, robotic, cyberpunk, neon or artificial elements unless explicitly mentioned.
+The image MUST visually reflect this tone/style: ${toneStyle}
+If the user asks for a 'poster', 'flyer', 'ad', or 'graphic design', generate a "modern corporate graphic design poster template, featuring bold typography, clean vector layouts, UI/UX elements, icons, and structured text sections". It must NOT be a photograph of a person.
+If the user asks for a specific style (like '3d render', 'cartoon'), ensure the prompt strongly reflects that style.
+Avoid any futuristic, robotic, cyberpunk, neon or artificial elements unless explicitly mentioned.
 Return ONLY the final prompt text, nothing else.`;
 
-    let imagePrompt = await generateText(imageEnhanceSystemPrompt, topic);
+    let imagePrompt = await generateText(imageEnhanceSystemPrompt, `Topic: ${topic} | Platform: ${platform} | Tone: ${tone}`);
     if (!imagePrompt) {
-      imagePrompt = topic;
+      imagePrompt = `${topic}, ${toneStyle.toLowerCase()}`;
     }
 
     // ─── Step 3: Generate image (Hugging Face) ───
@@ -279,17 +287,25 @@ Return ONLY the final prompt text, nothing else.`;
     let content = null;
     let hashtags = [];
 
-    const systemPrompt = `You are an expert ${platform} social media content creator. Your task is to write a caption SPECIFICALLY and ONLY about the topic given by the user — do NOT write a generic post.
+    const captionToneGuide = {
+      'Professional': `Write in a formal, authoritative, confident voice. No slang, no casual phrases. Use industry terminology, action-oriented statements, and declarative sentences. Maximum 2 emojis — only professional ones like 📊 🎯 💼 📈. CTA must be formal: "Learn more →", "Get started today", "Schedule a call".`,
+      'Friendly': `Write in a warm, conversational, inclusive voice. Use "you" and "we" frequently. Sound like a trusted friend — approachable, uplifting, personal. Use 3-4 warm emojis like 😊 💛 🙌 🌟 ✨. CTA must be inviting: "Come join us!", "Tell us what you think 💬", "Tag a friend who needs this!".`,
+      'Funny': `Write with humor, wit, and a light-hearted twist. Be unexpected — make people laugh or smile. Use clever wordplay or relatable observations. Use 3-4 fun emojis like 😂 😅 😜 🎉 👀. CTA must be playful: "You're welcome 😂", "Don't say we didn't warn you!", "Tag someone who needs this 👇".`,
+      'Luxury': `Write in an aspirational, exclusive, minimalist voice. Every word must earn its place. Use sophisticated, evocative adjectives. NO exclamation marks. Maximum 2 subtle emojis like ✨ 🖤 💎. CTA must be understated and exclusive: "Reserved for the discerning few.", "Explore the collection.", "Discover yours.".`,
+    };
+    const toneInstructions = captionToneGuide[tone] || captionToneGuide['Professional'];
+
+    const systemPrompt = `You are an expert ${platform} social media content creator. Write a caption SPECIFICALLY about the topic — do NOT be generic.
+
+STRICT TONE INSTRUCTIONS — follow exactly for "${tone || 'Professional'}" tone:
+${toneInstructions}
 
 Rules:
 - The caption must be about "${topic}" — mention it naturally and specifically.
-- Tone: ${tone || 'Professional'}. Match the energy of ${platform}.
-- Include 2-3 relevant emojis.
-- End with a clear call-to-action suited to ${platform}.
-- Do NOT include any hashtags in the caption (they are added separately).
-- Keep it between 3-6 sentences. Be specific, compelling, and platform-native.
-- Never use generic phrases like "unleashing your potential" or "diving deep" that have nothing to do with the topic.`;
-    const userPrompt = `Write a ${platform} caption about: ${topic}`;
+- Do NOT include any hashtags (added separately).
+- Keep it 3-5 sentences, platform-native for ${platform}.
+- The caption MUST sound noticeably different from other tones — this is critical.`;
+    const userPrompt = `Write a ${platform} caption in ${tone || 'Professional'} tone about: ${topic}`;
 
     try {
       content = await generateText(systemPrompt, userPrompt);
@@ -320,14 +336,15 @@ Rules:
       hashtags = localFallback.hashtags;
     }
 
-    // Save to history
+    // Save to history — only store URL-based images, not base64 (too large for MongoDB)
+    const imageUrlToSave = imageUrl && imageUrl.startsWith('http') ? imageUrl : null;
     if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
       await GeneratedContent.create({
         user: req.user._id,
         type: 'Social Media',
         title: `${platform} post about ${topic.substring(0, 50)}`,
         content: `${content}\n\n${hashtags.join(' ')}`,
-        metadata: { platform, tone, imageUrl },
+        metadata: { platform, tone, imageUrl: imageUrlToSave },
       });
     }
 
@@ -348,7 +365,26 @@ const generateAdCopy = async (req, res) => {
       return res.status(400).json({ message: 'Product description is required' });
     }
 
-    const systemPrompt = `You are an expert advertising copywriter. Generate a compelling ${adType || 'Facebook'} ad copy optimized for ${goal || 'Conversions'}. Include a headline, primary text, CTA, and description. Make it persuasive and action-oriented.`;
+    const adGoalGuide = {
+      'Conversions': 'Focus on immediate sales. Use high-urgency language, emphasize benefits and ROI. CTA must be direct: "Buy Now", "Shop Today", "Get Yours". Keep it punchy and persuasive.',
+      'Brand Awareness': 'Focus on storytelling and brand identity. Build trust and emotional connection. Introduce the product naturally without being overly salesy. CTA must be soft: "Learn more about our story".',
+      'Lead Generation': 'Focus on capturing information. Offer value upfront (like a guide, consultation, or discount). Use persuasive language to encourage sign-ups. CTA must be "Sign Up" or "Get Your Free Quote".',
+      'App Installs': 'Focus on app features, convenience, and user experience. Use short, snappy bullet points highlighting key benefits. Tone should be tech-forward. CTA must be "Download Now" or "Install Free".',
+      'Engagement': 'Focus on starting a conversation. Ask thought-provoking questions. Encourage users to comment, share, or tag a friend. Keep it highly interactive. CTA must be "Join the conversation" or "Tell us below".',
+    };
+    const goalInstructions = adGoalGuide[goal] || adGoalGuide['Conversions'];
+
+    const systemPrompt = `You are an expert advertising copywriter. Generate a compelling ${adType || 'Facebook'} ad copy for the product.
+STRICT CAMPAIGN GOAL INSTRUCTIONS for "${goal || 'Conversions'}":
+${goalInstructions}
+
+Include:
+1. A catchy headline
+2. Primary text (body copy)
+3. A clear CTA (Call to Action)
+4. A short description
+
+Make it highly persuasive and ensure it sounds distinctly different from other campaign types.`;
     const userPrompt = `Create ad copy for: ${product}. Target audience: ${audience || 'general audience'}. Campaign goal: ${goal || 'Conversions'}.`;
 
     let content = await generateText(systemPrompt, userPrompt);
@@ -359,15 +395,25 @@ const generateAdCopy = async (req, res) => {
       content = `📢 ${adType || 'Facebook'} Ad — ${goal || 'Conversions'}\n\n🎯 Headline:\n"${productShort} — The Smart Choice for ${audience || 'Everyone'}"\n\n📝 Primary Text:\nLooking for the best in ${product}? You've found it. Here's why thousands of ${audience || 'customers'} trust us:\n\n✅ Proven results with ${product}\n✅ Tailored for ${audience || 'every need'}\n✅ Optimized for ${goal || 'conversions'} from day one\n\n${audience ? `Specifically designed for ${audience} who want to achieve more.` : 'Trusted by businesses worldwide.'}\n\n👉 CTA: "${goalVerb.charAt(0).toUpperCase() + goalVerb.slice(1)} →"\n\n📌 Description:\nDon't miss out — ${productShort} is changing the game for ${audience || 'people'} who want real results.`;
     }
 
-    // Enhance image prompt for Ad
-    const imageEnhanceSystemPrompt = `You are an expert ad designer. Convert the product description into a highly compelling, professional ad image description.
+    // Enhance image prompt for Ad — include goal and audience for more accurate visuals
+    const adGoalStyleMap = {
+      'Conversions':      'High-converting product photography, urgency-driven composition, bold call-to-action visual cues.',
+      'Brand Awareness':  'Aspirational lifestyle imagery, brand identity colors, wide cinematic shot.',
+      'Lead Generation':  'Professional, trustworthy, clean corporate photography with form/CTA visual metaphors.',
+      'App Installs':     'Clean device mockup showcasing the app, modern tech aesthetic, bright and minimal.',
+      'Engagement':       'Eye-catching, vibrant, emotionally engaging, social-first composition.',
+    };
+    const adGoalStyle = adGoalStyleMap[goal] || 'Professional, commercial product photography.';
+
+    const imageEnhanceSystemPrompt = `You are an expert ad designer. Convert the product description into a highly compelling ad image description.
 It should be suitable for AI image generation. Make it visually appealing, commercial, and focused on marketing.
+Visual style MUST match this campaign goal: ${adGoalStyle}
 Do not add any text on the image. Return ONLY the description, nothing else.`;
 
     let imagePrompt = product;
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
-      const enhanced = await generateText(imageEnhanceSystemPrompt, `Product: "${product}". Target audience: "${audience || 'General'}"`);
+      const enhanced = await generateText(imageEnhanceSystemPrompt, `Product: "${product}". Target audience: "${audience || 'General'}". Campaign goal: "${goal || 'Conversions'}"`);
       if (enhanced) {
         imagePrompt = enhanced;
       }
@@ -375,8 +421,10 @@ Do not add any text on the image. Return ONLY the description, nothing else.`;
 
     let imageUrl = null;
     try {
+      // Append goal to the image prompt so it is always a unique string for Hugging Face (prevents caching the exact same image)
+      const finalImagePrompt = `${imagePrompt}. Artistic style emphasizing ${goal || 'Conversions'}.`;
       // Ads default to 1080x1080 (square feed ad)
-      imageUrl = await generateImage(imagePrompt, 1080, 1080);
+      imageUrl = await generateImage(finalImagePrompt, 1080, 1080);
       console.log('✅ Ad image generated successfully');
     } catch (err) {
       console.error('Error generating ad image:', err);
@@ -565,9 +613,19 @@ const generateChat = async (req, res) => {
 
     // ─── Detect image generation intent ───────────────────────────────────────
     const imageKeywords = [
+      // Direct image requests
       'image', 'picture', 'photo', 'illustration', 'artwork', 'banner',
       'poster', 'thumbnail', 'visual', 'graphic', 'generate image',
       'create image', 'make image', 'show me', 'draw', 'design',
+      // Creative / art types
+      'tattoo', 'logo', 'flyer', 'card', 'portrait', 'landscape', 'wallpaper',
+      'sticker', 'icon', 'avatar', 'cover', 'background', 'texture',
+      'painting', 'sketch', 'render', '3d', 'cartoon', 'anime', 'realistic',
+      // Product / marketing visuals
+      'product shot', 'ad image', 'campaign image', 'brand image',
+      'infographic', 'chart image', 'mockup',
+      // Action words that imply wanting to see something
+      'visualize', 'create a', 'generate a', 'make a', 'build a', 'show a',
     ];
     const wantsImage = imageKeywords.some(kw => lowerMsg.includes(kw));
 
@@ -625,7 +683,8 @@ Return ONLY the final prompt text, nothing else.`;
       }
     }
 
-    // ─── Save to history ───────────────────────────────────────────────────────
+    // ─── Save to history — only store URL-based images, not base64 (too large for MongoDB) ──
+    const chatImageUrlToSave = imageUrl && imageUrl.startsWith('http') ? imageUrl : null;
     if (req.user && req.user._id && !String(req.user._id).startsWith('guest')) {
       await GeneratedContent.create({
         user: req.user._id,
@@ -633,7 +692,7 @@ Return ONLY the final prompt text, nothing else.`;
         title: message.substring(0, 60),
         content,
         metadata: { 
-          imageUrl: imageUrl || undefined,
+          imageUrl: chatImageUrlToSave || undefined,
           userMessage: message 
         },
       });

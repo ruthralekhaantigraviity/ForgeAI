@@ -43,6 +43,7 @@ const registerUser = async (req, res) => {
         email: user.email,
         role: user.role,
         subscription: user.subscription,
+        twoFactorEnabled: user.twoFactorEnabled,
         token: generateToken(user._id),
       });
     } else {
@@ -69,6 +70,7 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         subscription: user.subscription,
+        twoFactorEnabled: user.twoFactorEnabled,
         token: generateToken(user._id),
       });
     } else {
@@ -128,8 +130,50 @@ const updateProfile = async (req, res) => {
         email: updatedUser.email,
         role: updatedUser.role,
         subscription: updatedUser.subscription,
+        twoFactorEnabled: updatedUser.twoFactorEnabled,
         token: generateToken(updatedUser._id),
       });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update password (authenticated)
+// @route   PUT /api/auth/update-password
+// @access  Private
+const updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (user && (await bcrypt.compare(currentPassword, user.password))) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(newPassword, salt);
+      await user.save();
+      res.json({ message: 'Password updated successfully' });
+    } else {
+      res.status(401).json({ message: 'Incorrect current password' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Toggle Two-Factor Authentication
+// @route   PUT /api/auth/two-factor
+// @access  Private
+const toggleTwoFactor = async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      user.twoFactorEnabled = enabled;
+      await user.save();
+      res.json({ message: `Two-Step Verification ${enabled ? 'enabled' : 'disabled'}` });
     } else {
       res.status(404).json({ message: 'User not found' });
     }
@@ -143,4 +187,6 @@ module.exports = {
   loginUser,
   resetPassword,
   updateProfile,
+  updatePassword,
+  toggleTwoFactor,
 };

@@ -53,6 +53,14 @@ const DashboardLayout = () => {
   
   const [profileName, setProfileName] = useState(user?.name || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
+  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(user?.twoFactorEnabled || false);
+  const [isTogglingTwoFactor, setIsTogglingTwoFactor] = useState(false);
 
   // Auto-focus search input when opened
   useEffect(() => {
@@ -85,6 +93,7 @@ const DashboardLayout = () => {
   useEffect(() => {
     if (user) {
       setProfileName(user.name);
+      setIsTwoFactorEnabled(user.twoFactorEnabled || false);
     }
   }, [user]);
 
@@ -109,6 +118,66 @@ const DashboardLayout = () => {
       alert(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!user || user.token.startsWith('guest')) {
+      alert('Guest profile cannot be updated.');
+      return;
+    }
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Please fill in all password fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match.');
+      return;
+    }
+    
+    try {
+      setIsUpdatingPassword(true);
+      await axios.put(
+        `${API_BASE_URL}/api/auth/update-password`,
+        { currentPassword, newPassword },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      alert('Password updated successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setActiveModal(null);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || 'Failed to update password');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleToggleTwoFactor = async () => {
+    if (!user || user.token.startsWith('guest')) {
+      alert('Guest profile cannot be updated.');
+      return;
+    }
+    const newStatus = !isTwoFactorEnabled;
+    setIsTwoFactorEnabled(newStatus); // Optimistic update
+    
+    try {
+      setIsTogglingTwoFactor(true);
+      await axios.put(
+        `${API_BASE_URL}/api/auth/two-factor`,
+        { enabled: newStatus },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      
+      updateUser({ ...user, twoFactorEnabled: newStatus });
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || 'Failed to update two-step verification');
+      setIsTwoFactorEnabled(!newStatus); // Revert on failure
+    } finally {
+      setIsTogglingTwoFactor(false);
     }
   };
 
@@ -350,6 +419,8 @@ const DashboardLayout = () => {
                       <input 
                         type="password"
                         autoComplete="current-password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
                         placeholder="••••••••" 
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
@@ -359,6 +430,8 @@ const DashboardLayout = () => {
                       <input 
                         type="password"
                         autoComplete="new-password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="••••••••" 
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
@@ -368,6 +441,8 @@ const DashboardLayout = () => {
                       <input 
                         type="password"
                         autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••" 
                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-brand-darker border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500/50 outline-none text-sm"
                       />
@@ -377,11 +452,36 @@ const DashboardLayout = () => {
                     <Shield className="w-5 h-5 shrink-0" />
                     <span>Two-Factor Authentication is currently recommended to protect your generation limits.</span>
                   </div>
+                  
+                  {/* Two-Step Verification Section */}
+                  <div className="p-4 border border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50 dark:bg-gray-800/30">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-brand-500" />
+                        <h4 className="font-semibold text-sm">Two-Step Verification</h4>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={isTwoFactorEnabled}
+                          onChange={handleToggleTwoFactor}
+                          disabled={isTogglingTwoFactor}
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-green-500 dark:peer-checked:bg-green-500"></div>
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Add an extra layer of security to your account by requiring a verification code in addition to your password.
+                    </p>
+                  </div>
+
                   <button 
-                    onClick={() => { alert('Password updated successfully!'); setActiveModal(null); }}
-                    className="w-full mt-2 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium text-sm transition-colors shadow-lg shadow-brand-500/10"
+                    onClick={handleUpdatePassword}
+                    disabled={isUpdatingPassword}
+                    className="w-full mt-2 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium text-sm transition-colors shadow-lg shadow-brand-500/10 disabled:opacity-50"
                   >
-                    Update Password
+                    {isUpdatingPassword ? 'Updating...' : 'Update Password'}
                   </button>
                 </div>
               )}
