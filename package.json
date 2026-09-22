@@ -1,5 +1,17 @@
 {
+  "name": "brandforge-ai-root",
+  "version": "1.0.0",
+  "private": true,
   "dependencies": {
-    "tar": "^7.5.16"
+    "axios": "^1.16.1",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "form-data": "^4.0.5",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.6.2",
+    "openai": "^6.39.0"
   }
 }

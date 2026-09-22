@@ -1,6 +1,11 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+let bcrypt;
+try {
+  bcrypt = require('bcryptjs');
+} catch (e) {
+  bcrypt = require('bcrypt');
+}
 
 const generateToken = (id) => {
   const secret = process.env.JWT_SECRET || 'supersecretjwtkey_replace_in_production';
