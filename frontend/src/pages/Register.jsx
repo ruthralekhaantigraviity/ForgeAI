@@ -11,14 +11,23 @@ const Register = () => {
   const { register } = useContext(AuthContext);
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
     try {
       await register(name, email, password);
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      if (!err.response) {
+        setError('Unable to connect to live backend server. Please check your network or try again.');
+      } else {
+        setError(err.response?.data?.message || 'Registration failed');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

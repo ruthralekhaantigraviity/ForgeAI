@@ -9,9 +9,10 @@ import API_BASE_URL from '../config/api';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useContext(AuthContext);
+  const { login, loginAsGuest } = useContext(AuthContext);
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Password reset states
   const [showReset, setShowReset] = useState(false);
@@ -23,12 +24,25 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
     try {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      if (!err.response) {
+        setError('Unable to reach server. The live backend might be waking up, please try again in a few seconds or use Guest Login.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    navigate('/dashboard');
   };
 
   const handleResetSubmit = async (e) => {
@@ -120,9 +134,24 @@ const Login = () => {
               </div>
               <button 
                 type="submit"
-                className="w-full py-3 px-4 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-xl font-medium shadow-lg hover:shadow-brand-500/25 transition-all duration-200"
+                disabled={isSubmitting}
+                className="w-full py-3 px-4 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white rounded-xl font-medium shadow-lg hover:shadow-brand-500/25 transition-all duration-200 disabled:opacity-50"
               >
-                Sign In
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
+              </button>
+              
+              <div className="relative my-4 flex items-center justify-center">
+                <div className="border-t border-gray-300 dark:border-gray-700 w-full"></div>
+                <span className="bg-white dark:bg-brand-dark px-3 text-xs text-gray-500 uppercase font-semibold">Or</span>
+                <div className="border-t border-gray-300 dark:border-gray-700 w-full"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                className="w-full py-3 px-4 border border-brand-500/30 bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                ⚡ Instant Guest / Demo Access
               </button>
             </form>
             <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
