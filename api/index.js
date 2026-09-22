@@ -17,8 +17,13 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Ensure DB connected for every API request
 app.use(async (req, res, next) => {
-  await connectDB();
-  next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Database connection failed in middleware:', err);
+    res.status(500).json({ message: 'Database connection failed: ' + err.message });
+  }
 });
 
 // Root API Health Route
@@ -30,5 +35,11 @@ app.get('/api', (req, res) => {
 app.use('/api/auth', require('../backend/routes/auth'));
 app.use('/api/ai', require('../backend/routes/ai'));
 app.use('/api/history', require('../backend/routes/history'));
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('API Error:', err);
+  res.status(err.status || 500).json({ message: err.message || 'Internal Server Error' });
+});
 
 module.exports = app;
