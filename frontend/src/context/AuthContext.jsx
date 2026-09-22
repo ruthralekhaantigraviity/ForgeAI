@@ -33,20 +33,6 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const loginAsGuest = () => {
-    const guestUser = {
-      _id: 'guest_001',
-      name: 'Guest User',
-      email: 'guest@forge.ai',
-      role: 'Business User',
-      subscription: 'Free',
-      credits: 5,
-      token: 'guest_token_placeholder'
-    };
-    setUser(guestUser);
-    localStorage.setItem('userInfo', JSON.stringify(guestUser));
-  };
-
   const updateUser = (userData) => {
     setUser(userData);
     localStorage.setItem('userInfo', JSON.stringify(userData));
@@ -58,7 +44,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginAsGuest, logout, updateUser, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );
