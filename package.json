@@ -2,6 +2,12 @@
   "name": "brandforge-ai-root",
   "version": "1.0.0",
   "private": true,
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "build": "echo 'Root build complete'"
+  },
   "dependencies": {
     "axios": "^1.16.1",
     "bcrypt": "^6.0.0",
