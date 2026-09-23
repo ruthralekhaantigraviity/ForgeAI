@@ -9,7 +9,7 @@ const connectDB = async () => {
   if (isConnected || mongoose.connection.readyState >= 1) {
     return true;
   }
-  const mongoURI = process.env.MONGO_URI || 'mongodb+srv://kamalmani895_db_user:vBS0an2oSCFZDplU@cluster0.pfyxnuk.mongodb.net/?appName=Cluster0';
+  const mongoURI = process.env.MONGO_URI || 'mongodb+srv://ruthralekhaantigraviity_db_user:<db_password>@cluster0.3fnc07s.mongodb.net/brandforge?retryWrites=true&w=majority';
   try {
     const conn = await mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 5000,
