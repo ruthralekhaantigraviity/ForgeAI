@@ -14,11 +14,19 @@ const generateToken = (id) => {
   });
 };
 
+const mongoose = require('mongoose');
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database is disconnected. Please check your MONGO_URI environment variable or MongoDB Atlas cluster.' 
+      });
+    }
+
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
@@ -65,6 +73,12 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database is disconnected. Please check your MONGO_URI environment variable or MongoDB Atlas cluster.' 
+      });
+    }
+
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
